@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26711.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TimecardFunctions", "TimecardFunctions\TimecardFunctions.csproj", "{8E7E32BE-A139-4137-A7E5-BFA1F748744E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimecardLogic", "TimecardLogic\TimecardLogic.csproj", "{3559BEA4-FF2A-4059-83B9-D4E2DEE94800}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TimecardBot", "TimecardBot\TimecardBot.csproj", "{697499E4-C039-4DB9-B920-FB4FB4EF0FA3}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8E7E32BE-A139-4137-A7E5-BFA1F748744E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E7E32BE-A139-4137-A7E5-BFA1F748744E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E7E32BE-A139-4137-A7E5-BFA1F748744E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E7E32BE-A139-4137-A7E5-BFA1F748744E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3559BEA4-FF2A-4059-83B9-D4E2DEE94800}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3559BEA4-FF2A-4059-83B9-D4E2DEE94800}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3559BEA4-FF2A-4059-83B9-D4E2DEE94800}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3559BEA4-FF2A-4059-83B9-D4E2DEE94800}.Release|Any CPU.Build.0 = Release|Any CPU
+		{697499E4-C039-4DB9-B920-FB4FB4EF0FA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{697499E4-C039-4DB9-B920-FB4FB4EF0FA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{697499E4-C039-4DB9-B920-FB4FB4EF0FA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{697499E4-C039-4DB9-B920-FB4FB4EF0FA3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9F322D63-64A9-4643-B997-B50A5DCE52F3}
+	EndGlobalSection
+EndGlobal
