@@ -25,21 +25,51 @@ namespace TimecardFunctions
             var users = await usersRepo.GetAllUsers();
             foreach (var user in users)
             {
-                var userAccount = new ChannelAccount(id: user.UserId);
-                var res = connector.Conversations.CreateDirectConversation(botAccount, userAccount);
+                int startHour, startMinute;
+                int endHour, endMinute;
+
+                ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
+                ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
 
                 var nowUtc = DateTime.Now.ToUniversalTime();
-                var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
-                var nowTokyo = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzTokyo);
+                var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
+                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser);
 
-                IMessageActivity message = Activity.CreateMessageActivity();
-                message.From = botAccount;
-                message.Recipient = userAccount;
-                message.Conversation = new ConversationAccount(id: res.Id);
-                message.Text = $"{nowTokyo} ({tzTokyo.StandardName}) です、こんにちわ、{user.NickName} さん。";
-                message.Locale = "ja-Jp";
-                connector.Conversations.SendToConversation((Activity)message);
+                var startTotalMinute = startHour * 60 + startMinute;
+                var endTotalMinute = endHour * 60 + endMinute;
+                var nowTotalMinute = nowUserTz.Hour * 60 + nowUserTz.Minute;
+
+                if (startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute)
+                {
+                    var userAccount = new ChannelAccount(id: user.UserId);
+                    var res = connector.Conversations.CreateDirectConversation(botAccount, userAccount);
+
+
+                    IMessageActivity message = Activity.CreateMessageActivity();
+                    message.From = botAccount;
+                    message.Recipient = userAccount;
+                    message.Conversation = new ConversationAccount(id: res.Id);
+                    var minute = nowUserTz.Minute / 30 * 30;
+                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowUserTz.Hour}時{minute:00}分 です、今日のお仕事は終わりましたか？";
+                    message.Locale = "ja-Jp";
+                    connector.Conversations.SendToConversation((Activity)message);
+                }
             }
+        }
+
+        private bool ParseHHMM(string hhmm, out int hour, out int minute)
+        {
+            hour = 0;
+            minute = 0;
+
+            if (hhmm.Length != 4)
+            {
+                return false;
+            }
+
+            hour = int.Parse(hhmm.Substring(0, 2));
+            minute = int.Parse(hhmm.Substring(2));
+            return true;
         }
     }
 }
