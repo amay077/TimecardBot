@@ -50,7 +50,8 @@ namespace TimecardFunctions
                     message.Recipient = userAccount;
                     message.Conversation = new ConversationAccount(id: res.Id);
                     var minute = nowUserTz.Minute / 30 * 30;
-                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowUserTz.Hour}時{minute:00}分 です、今日のお仕事は終わりましたか？";
+                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowUserTz.Hour}時{minute:00}分 です、今日のお仕事は終わりましたか？\n"  +
+                        $"（y:終わった n:終わってない d:今日はもう聞くな hhmm:任意の終わった時刻）";
                     message.Locale = "ja-Jp";
                     connector.Conversations.SendToConversation((Activity)message);
                 }
