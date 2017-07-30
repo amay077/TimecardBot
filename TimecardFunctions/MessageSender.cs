@@ -23,7 +23,7 @@ namespace TimecardFunctions
             _log = log;
         }
 
-        public async void Send()
+        public async void Send(bool disableFilter)
         {
             //var serviceUrl = "https://smba.trafficmanager.net/apis/";
             //var serviceUrl = "https://timecardbot20170730023129.azurewebsites.net/api";
@@ -61,14 +61,29 @@ namespace TimecardFunctions
                 // ターゲット日付と現在時刻が同じで、
                 // 打刻済/今日はもう聞かないで/休日だったら何もしない
                 var currentState = stateEntity?.State ?? AskingState.None;
-                if (string.CompareOrdinal(nowUserTzText, currentTargetDate) == 0 && 
-                    currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff)
+                bool containsTimeRange = true;
+                if (!disableFilter)
                 {
-                    _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzText})が同じで、State が {currentState} なので何もしない");
-                    continue;
+                    if (string.CompareOrdinal(nowUserTzText, currentTargetDate) == 0 &&
+                        currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff)
+                    {
+                        _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzText})が同じで、State が {currentState} なので何もしない");
+                        continue;
+                    }
+
+                    containsTimeRange = startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute;
+
+                    // 聞き取り終了時刻を過ぎていたらStateをNoneにする
+                    // AskingEoW のまま y を打たれると打刻できてしまうので。
+                    if (nowTotalMinute > endTotalMinute)
+                    {
+                        await conversationStateRepo.UpsertState(
+                            user.PartitionKey, user.UserId, AskingState.None, $"{endHour:00}{endMinute:00}",
+                            nowUserTzText);
+                    }
                 }
 
-                if (startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute)
+                if (containsTimeRange)
                 {
                     var conversationRef = JsonConvert.DeserializeObject<ConversationReference>(user.ConversationRef);
 

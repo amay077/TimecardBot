@@ -55,23 +55,41 @@ namespace TimecardBot.Dialogs
                 var conversationStateRepo = new ConversationStateRepository();
                 var stateEntity = await conversationStateRepo.GetStatusByUserId(_currentUser?.UserId ?? string.Empty);
 
+                //if (stateEntity == null)
+                //{
+                //    stateEntity = new ConversationStateEntity("debug_tenant", _currentUser.UserId)
+                //    {
+                //        State = AskingState.AskingEoW,
+                //        TargetDate = "2017/07/30",
+                //        TargetTime = "2000",
+                //    };
+                //}
+
                 // 終業かを問い合わせ中なら、
                 // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
                 if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
                 {
                     if (string.CompareOrdinal(message.Text, "y") == 0) // y:はい
                     {
-                        int hour, minute;
-                        Util.ParseHHMM(stateEntity.TargetTime, out hour, out minute);
-                        await context.PostAsync($"お疲れさまでした。{stateEntity.TargetDate} の終業時刻は {hour}時{minute:00}分 を記録します。");
+                        int eowHour, eowMinute;
+                        Util.ParseHHMM(stateEntity.TargetTime, out eowHour, out eowMinute);
+
+                        // 該当日のタイムカードの終業時刻を更新
+                        int year, month, day;
+                        Util.ParseYYYYMMDD(stateEntity.TargetDate, out year, out month, out day);
+                        var monthlyTimecardRepo = new MonthlyTimecardRepository();
+                        await monthlyTimecardRepo.UpsertTimecardRecord(_currentUser.UserId, year, month, day, eowHour, eowMinute);
 
                         // 打刻済みにして更新
                         stateEntity.State = AskingState.Punched;
                         await conversationStateRepo.UpsertState(stateEntity);
+
+                        await context.PostAsync($"お疲れさまでした。{month}月{day}日 の終業時刻は {eowHour}時{eowMinute:00}分 を記録しました。");
                     }
                     else if (string.CompareOrdinal(message.Text, "d") == 0) // d:もう聞かないで
                     {
                         await context.PostAsync($"分かりました。今日はもう聞きません。");
+
                         // 今日はもう聞かないにして更新
                         stateEntity.State = AskingState.DoNotAskToday;
                         await conversationStateRepo.UpsertState(stateEntity);

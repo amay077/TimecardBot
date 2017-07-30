@@ -13,7 +13,7 @@ namespace TimecardFunctions
 
             // Skype でメッセージ送信
             var sender = new MessageSender(log);
-            sender.Send();
+            sender.Send(false);
             log.Info($"C# Timer trigger messege sent at: {DateTime.Now}");
 
         }

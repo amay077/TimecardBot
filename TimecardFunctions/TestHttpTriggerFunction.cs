@@ -26,6 +26,10 @@ namespace TimecardFunctions
                 .FirstOrDefault(q => string.Compare(q.Key, "name", true) == 0)
                 .Value;
 
+            string disableFilter = req.GetQueryNameValuePairs()
+                .FirstOrDefault(q => string.Compare(q.Key, "disableFilter", true) == 0)
+                .Value;
+
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<object>();
 
@@ -34,7 +38,7 @@ namespace TimecardFunctions
 
             // Skype でメッセージ送信
             var sender = new MessageSender(log);
-            sender.Send();
+            sender.Send(bool.Parse(disableFilter));
 
             return name == null
                 ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
