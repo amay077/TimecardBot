@@ -9,11 +9,20 @@ using System.Text;
 using System.Threading.Tasks;
 using AdaptiveCards;
 using Newtonsoft.Json;
+using TimecardLogic;
+using Microsoft.Azure.WebJobs.Host;
 
 namespace TimecardFunctions
 {
     class MessageSender
     {
+        private readonly TraceWriter _log;
+
+        public MessageSender(TraceWriter log)
+        {
+            _log = log;
+        }
+
         public async void Send()
         {
             //var serviceUrl = "https://smba.trafficmanager.net/apis/";
@@ -21,23 +30,43 @@ namespace TimecardFunctions
             var appId = ConfigurationManager.AppSettings["MicrosoftAppId"];
             var appPassword = ConfigurationManager.AppSettings["MicrosoftAppPassword"];
 
+            var nowUtc = DateTime.Now.ToUniversalTime();
+
             var usersRepo = new UsersRepository();
             var users = await usersRepo.GetAllUsers();
+
+            var conversationStateRepo = new ConversationStateRepository();
+
+            _log.Info($"処理ユーザー数: {users.Count()}");
             foreach (var user in users)
             {
                 int startHour, startMinute;
                 int endHour, endMinute;
 
-                ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
-                ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
-
-                var nowUtc = DateTime.Now.ToUniversalTime();
                 var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
-                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser);
+                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser); // ユーザーのタイムゾーンでの現在時刻
+                var nowUserTzText = $"{nowUserTz.Year:0000}/{nowUserTz.Month:00}/{nowUserTz.Day:00}";  // ユーザーTZ現在時刻を文字列化
+
+                Util.ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
+                Util.ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
 
                 var startTotalMinute = startHour * 60 + startMinute;
                 var endTotalMinute = endHour * 60 + endMinute;
                 var nowTotalMinute = nowUserTz.Hour * 60 + nowUserTz.Minute;
+
+                var stateEntity = await conversationStateRepo.GetStatusByUserId(user.UserId);
+
+                var currentTargetDate = stateEntity?.TargetDate ?? "2000/01/01";
+
+                // ターゲット日付と現在時刻が同じで、
+                // 打刻済/今日はもう聞かないで/休日だったら何もしない
+                var currentState = stateEntity?.State ?? AskingState.None;
+                if (string.CompareOrdinal(nowUserTzText, currentTargetDate) == 0 && 
+                    currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff)
+                {
+                    _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzText})が同じで、State が {currentState} なので何もしない");
+                    continue;
+                }
 
                 if (startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute)
                 {
@@ -49,8 +78,9 @@ namespace TimecardFunctions
                     var message = conversationRef.GetPostToUserMessage();
                     message = message.CreateReply();
 
+                    var hour = nowUserTz.Hour;
                     var minute = nowUserTz.Minute / 30 * 30;
-                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowUserTz.Hour}時{minute:00}分 です、今日のお仕事は終わりましたか？" +
+                    message.Text = $"{user.NickName} さん、お疲れさまです。{hour}時{minute:00}分 です、今日のお仕事は終わりましたか？" +
                         $"（y:終わった／n:終わってない／d:今日は徹夜）";
                     message.Locale = "ja-Jp";
 
@@ -60,24 +90,17 @@ namespace TimecardFunctions
                     //    Content = MakeAdaptiveCard()
                     //});
 
-                    connector.Conversations.ReplyToActivity(message);
+                    await connector.Conversations.ReplyToActivityAsync(message);
+
+                    await conversationStateRepo.UpsertState(
+                        user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{hour:00}{minute:00}",
+                        nowUserTzText);
+                }
+                else
+                {
+                    _log.Info($"現在時刻({nowUserTz}) が {user.AskEndOfWorkStartTime} から {user.AskEndOfWorkEndTime} の範囲外なので何もしない");
                 }
             }
-        }
-
-        private bool ParseHHMM(string hhmm, out int hour, out int minute)
-        {
-            hour = 0;
-            minute = 0;
-
-            if (hhmm.Length != 4)
-            {
-                return false;
-            }
-
-            hour = int.Parse(hhmm.Substring(0, 2));
-            minute = int.Parse(hhmm.Substring(2));
-            return true;
         }
 
         private AdaptiveCard MakeAdaptiveCard()

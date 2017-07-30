@@ -9,6 +9,7 @@ namespace TimecardBot
     {
         None,
         RegistUser, // ユーザー登録
-        UnregistUser // ユーザー大会
+        UnregistUser, // ユーザー大会
+        Cancel // キャンセル
     }
 }

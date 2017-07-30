@@ -6,11 +6,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using TimecardLogic.DataModels;
 using TimecardLogic.Entities;
 
 namespace TimecardLogic.Repositories
 {
-    public class UsersRepository
+    public sealed class UsersRepository
     {
         private static string _paritionKey;
 
@@ -29,7 +30,7 @@ namespace TimecardLogic.Repositories
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
 
             // Retrieve a reference to the table.
-            _usersTable = tableClient.GetTableReference("users");
+            _usersTable = tableClient.GetTableReference("Users");
 
             // Create the table if it doesn't exist.
             _usersTable.CreateIfNotExists();
@@ -71,12 +72,13 @@ namespace TimecardLogic.Repositories
         }
 
 
+
         /// <summary>
         /// ユーザーIDが既に存在するなら true
         /// </summary>
         /// <param name="userId"></param>
         /// <returns></returns>
-        public Task<bool> ExistUserId(string userId)
+        public Task<User> GetUserById(string userId)
         {
             // ユーザーIDが存在するかのクエリ
             var retrieveOperation = TableOperation.Retrieve<UserEntity>(
@@ -84,7 +86,10 @@ namespace TimecardLogic.Repositories
 
             // 検索実行
             return _usersTable.ExecuteAsync(retrieveOperation)
-                .ContinueWith(x => x.Result.Result != null);
+                .ContinueWith(x => 
+                {
+                    return ((UserEntity)x?.Result?.Result)?.ToModel();
+                });
         }
 
         public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef)

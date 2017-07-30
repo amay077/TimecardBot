@@ -4,10 +4,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
+using System.Reflection;
+using Microsoft.WindowsAzure.Storage;
+using TimecardLogic.DataModels;
 
 namespace TimecardLogic.Entities
 {
-    public class UserEntity : TableEntity
+    public sealed class UserEntity : TableEntity
     {
         public UserEntity(string partitionKey, string userID)
         {
@@ -33,5 +36,10 @@ namespace TimecardLogic.Entities
 
         // Json化された Conversation
         public string ConversationRef { get; set; }
+
+        public User ToModel()
+        {
+            return new User(UserId, NickName, AskEndOfWorkStartTime, AskEndOfWorkEndTime, TimeZoneId, ConversationRef);
+        }
     }
 }

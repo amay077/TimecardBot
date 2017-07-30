@@ -33,7 +33,7 @@ namespace TimecardFunctions
             name = name ?? data?.name;
 
             // Skype でメッセージ送信
-            var sender = new MessageSender();
+            var sender = new MessageSender(log);
             sender.Send();
 
             return name == null
