@@ -30,5 +30,8 @@ namespace TimecardLogic.Entities
 
         // タイムゾーン
         public string TimeZoneId { get; set; }
+
+        // Json化された Conversation
+        public string ConversationRef { get; set; }
     }
 }

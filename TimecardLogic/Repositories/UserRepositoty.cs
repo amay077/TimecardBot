@@ -87,7 +87,7 @@ namespace TimecardLogic.Repositories
                 .ContinueWith(x => x.Result.Result != null);
         }
 
-        public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId)
+        public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef)
         {
             // エンティティ作成
             var user = new UserEntity(_paritionKey, userId)
@@ -95,7 +95,8 @@ namespace TimecardLogic.Repositories
                 NickName = nickName,
                 AskEndOfWorkStartTime = askEndOfWorkStartTime,
                 AskEndOfWorkEndTime  = askEndOfWorkEndTime,
-                TimeZoneId = timeZoneId
+                TimeZoneId = timeZoneId,
+                ConversationRef = conversationRef
             };
 
             // Create the TableOperation object that inserts the customer entity.

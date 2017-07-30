@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using Microsoft.Bot.Builder.ConnectorEx;
+using Newtonsoft.Json;
 
 namespace TimecardBot.Dialogs
 {
@@ -98,9 +100,11 @@ namespace TimecardBot.Dialogs
             var confirm = await argument;
             if (confirm)
             {
+                var conversationRef = context.Activity.ToConversationReference();
+
                 var userRepo = new UsersRepository();
                 var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
-                await userRepo.AddUser(_userId, "Mike", "1900", "2400", tzTokyo.Id);
+                await userRepo.AddUser(_userId, "Mike", "1900", "2400", tzTokyo.Id, JsonConvert.SerializeObject(conversationRef));
                 await context.PostAsync("ユーザーを登録しました。");
             }
             else
