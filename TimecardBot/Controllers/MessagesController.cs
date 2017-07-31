@@ -5,6 +5,9 @@ using System.Web.Http;
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Connector;
 using TimecardBot.Dialogs;
+using System;
+using Microsoft.Bot.Builder.FormFlow;
+using TimecardBot.DataModels;
 
 namespace TimecardBot
 {
@@ -20,7 +23,8 @@ namespace TimecardBot
             if (activity.Type == ActivityTypes.Message)
             {
                 //await Conversation.SendAsync(activity, () => new TestDialog());
-                await Conversation.SendAsync(activity, () => new MainDialog2());
+                //await Conversation.SendAsync(activity, MakeRootDialog);
+                await Conversation.SendAsync(activity, () => new MainDialog());
             }
             else
             {

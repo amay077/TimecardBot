@@ -133,6 +133,8 @@
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="AliasAttribute.cs" />
+    <Compile Include="DataModels\EndOfWorkTimeType.cs" />
+    <Compile Include="DataModels\RegistUserOrder.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
     <Compile Include="Dialogs\TestDialog.cs" />
     <Compile Include="Global.asax.cs">

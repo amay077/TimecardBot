@@ -14,11 +14,14 @@ using TimecardLogic.Entities;
 using TimecardLogic.DataModels;
 using TimecardLogic;
 using TimecardBot.Menus;
+using Microsoft.Bot.Builder.FormFlow;
+using static TimecardBot.MessagesController;
+using TimecardBot.DataModels;
 
 namespace TimecardBot.Dialogs
 {
     [Serializable]
-    public class MainDialog2 : IDialog<object>
+    public class MainDialog : IDialog<object>
     {
         protected int count = 1;
         private User _currentUser;
@@ -171,22 +174,22 @@ namespace TimecardBot.Dialogs
             switch (confirm.Type)
             {
                 case MenuType.RegistUser:
-                    var userRepo = new UsersRepository();
                     if (_currentUser != null)
                     {
                         await context.PostAsync("あなたは既にユーザー登録されています。");
                     }
                     else
                     {
-                        //PromptDialog.Confirm(context, ResetCountAsync, "リセットしますか?");
-
-                        PromptDialog.Confirm(context, RegistUserAsync, "ユーザー登録を行ってよいですか？");
+                        var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
+                        context.Call(dlg, RegistUserProcess);
                         return;
                     }
                     break;
                 case MenuType.DownloadTimecard:
+                    await context.PostAsync("タイムカードのダウンロードはただいま実装中です。");
                     break;
                 case MenuType.ModityTimecard:
+                    await context.PostAsync("タイムカードの編集はただいま実装中です。");
                     break;
                 case MenuType.AboutThis: // このボットについて
                     var interval = 3000;
@@ -219,6 +222,23 @@ namespace TimecardBot.Dialogs
             context.Wait(MessageReceivedAsync);
         }
 
+        private async Task RegistUserProcess(IDialogContext context, IAwaitable<RegistUserOrder> result)
+        {
+            var order = await result;
+
+            var conversationRef = context.Activity.ToConversationReference();
+
+            var userRepo = new UsersRepository();
+            var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
+            var userId = await GetFirstMember(context.Activity as Activity);
+            await userRepo.AddUser(userId, order.NickName, $"{((int)order.EndOfWorkTime):00}00", "2400", tzTokyo.Id, JsonConvert.SerializeObject(conversationRef));
+            _currentUser = await userRepo.GetUserById(userId);
+
+            await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを私が聞きますのでよろしくお願いします。");
+
+            context.Wait(MessageReceivedAsync);
+        }
+
         public async Task SubMenuProcessAsync(IDialogContext context, IAwaitable<Menu<SubMenuType>> argument)
         {
             var choice = await argument;
@@ -236,7 +256,7 @@ namespace TimecardBot.Dialogs
                     }
                     break;
                 case SubMenuType.PostFeedback:
-                    
+                    await context.PostAsync("フィードバックの送信はただいま実装中です。");
                     break;
                 case SubMenuType.Cancel:
                     await context.PostAsync("メニューを閉じました。");
