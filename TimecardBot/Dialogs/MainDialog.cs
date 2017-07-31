@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using TimecardLogic.Entities;
 using TimecardLogic.DataModels;
 using TimecardLogic;
+using TimecardBot.Menus;
 
 namespace TimecardBot.Dialogs
 {
@@ -41,12 +42,12 @@ namespace TimecardBot.Dialogs
 
             var message = await argument;
 
-            if (string.CompareOrdinal(message.Text, "menu") == 0)
+            if (message.EqualsIntent("menu", "メニュー"))
             {
-                PromptDialog.Choice<MenuType>(context, MenuProcessAsync,
-                    new MenuType[] { MenuType.RegistUser, MenuType.UnregistUser, MenuType.Cancel },  "メニューを表示します");
+                PromptDialog.Choice<Menu>(context, MenuProcessAsync,
+                    BuildMenus(),  "タイムカードボットのメインメニューです。操作を選択して下さい。");
             }
-            else if (message.Text == "reset")
+            else if (message.EqualsIntent("reset", "リセット"))
             {
                 PromptDialog.Confirm(context, ResetCountAsync, "リセットしますか?");
             }
@@ -69,7 +70,7 @@ namespace TimecardBot.Dialogs
                 // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
                 if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
                 {
-                    if (string.CompareOrdinal(message.Text, "y") == 0) // y:はい
+                    if (message.EqualsIntent("y", "yes", "ok", "はい")) // y:はい
                     {
                         int eowHour, eowMinute;
                         Util.ParseHHMM(stateEntity.TargetTime, out eowHour, out eowMinute);
@@ -86,7 +87,7 @@ namespace TimecardBot.Dialogs
 
                         await context.PostAsync($"お疲れさまでした。{month}月{day}日 の終業時刻は {eowHour}時{eowMinute:00}分 を記録しました。");
                     }
-                    else if (string.CompareOrdinal(message.Text, "d") == 0) // d:もう聞かないで
+                    else if (message.EqualsIntent("d")) // d:もう聞かないで
                     {
                         await context.PostAsync($"分かりました。今日はもう聞きません。");
 
@@ -94,23 +95,58 @@ namespace TimecardBot.Dialogs
                         stateEntity.State = AskingState.DoNotAskToday;
                         await conversationStateRepo.UpsertState(stateEntity);
                     }
-                    else if (string.CompareOrdinal(message.Text, "n") == 0) // n:まだ
+                    else if (message.EqualsIntent("n", "no", "ng", "いいえ", "だめ")) // n:まだ
                     {
                         await context.PostAsync($"失礼しました。また３０分後に聞きます。");
                     }
                     else
                     {
-                        await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。 menu とタイプするとメニューを表示します。");
+                        await context.PostAsync($"認識できないコマンドです。 menu とタイプするとメニューを表示します。");
                     }
                 }
                 else
                 {
-                    await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。 menu とタイプするとメニューを表示します。");
+                    var text = "";
+                    if (_currentUser == null)
+                    {
+                        text = "初めての方は、 menu とタイプしてメニューを表示し、「ユーザー登録」を選択してください。";
+                    }
+                    else
+                    {
+                        text = " menu とタイプするとメニューを表示します。";
+                    }
+
+                    await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。" + text);
                 }
 
                 //await context.PostAsync(string.Format("{0}:{1}って言ったね。", this.count++, message.Text));
                 context.Wait(MessageReceivedAsync);
             }
+        }
+
+        private IEnumerable<Menu> BuildMenus()
+        {
+            var menus = new List<Menu>();
+
+            if (_currentUser == null)
+            {
+                // 未登録ユーザー
+                menus.Add(Menu.Make(MenuType.RegistUser));
+                menus.Add(Menu.Make(MenuType.AboutThis));
+                menus.Add(Menu.Make(MenuType.Cancel));
+            }
+            else
+            {
+                // 登録済みユーザー
+                menus.Add(Menu.Make(MenuType.DownloadTimecard));
+                menus.Add(Menu.Make(MenuType.ModityTimecard));
+                menus.Add(Menu.Make(MenuType.PostFeedback));
+                menus.Add(Menu.Make(MenuType.AboutThis));
+                menus.Add(Menu.Make(MenuType.UnregistUser));
+                menus.Add(Menu.Make(MenuType.Cancel));
+            }
+
+            return menus;
         }
 
         /// <summary>
@@ -129,10 +165,10 @@ namespace TimecardBot.Dialogs
             }
         }
 
-        public async Task MenuProcessAsync(IDialogContext context, IAwaitable<MenuType> argument)
+        public async Task MenuProcessAsync(IDialogContext context, IAwaitable<Menu> argument)
         {
             var confirm = await argument;
-            if (confirm == MenuType.RegistUser)
+            if (confirm.Type == MenuType.RegistUser)
             {
                 var userRepo = new UsersRepository();
                 if (_currentUser != null)
@@ -147,7 +183,7 @@ namespace TimecardBot.Dialogs
                     return;
                 }
             }
-            else if (confirm == MenuType.UnregistUser)
+            else if (confirm.Type == MenuType.UnregistUser)
             {
                 if (_currentUser == null)
                 {
@@ -159,7 +195,7 @@ namespace TimecardBot.Dialogs
                     return;
                 }
             }
-            else if (confirm == MenuType.Cancel)
+            else if (confirm.Type == MenuType.Cancel)
             {
                 await context.PostAsync("メニューを閉じました。");
             }

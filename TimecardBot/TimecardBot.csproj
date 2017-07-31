@@ -129,14 +129,18 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AliasAttibuteExtensions.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
+    <Compile Include="AliasAttribute.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
     <Compile Include="Dialogs\TestDialog.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
+    <Compile Include="Menus\Menu.cs" />
     <Compile Include="MenuType.cs" />
+    <Compile Include="MessageActivityExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>
