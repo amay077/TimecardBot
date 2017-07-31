@@ -21,7 +21,7 @@ using TimecardBot.DataModels;
 namespace TimecardBot.Dialogs
 {
     [Serializable]
-    public class MainDialog : IDialog<object>
+    public class MainDialog2 : IDialog<object>
     {
         protected int count = 1;
         private User _currentUser;
@@ -193,15 +193,15 @@ namespace TimecardBot.Dialogs
                     break;
                 case MenuType.AboutThis: // このボットについて
                     var interval = 3000;
-                    await context.PostAsync("このボットは、終業時間を毎日EXCELに記録するのが面倒なあなたのためのボットです。");
+                    await context.PostAsync("私は、終業時間を毎日EXCELに記録するのが面倒なアナタのためのボットです。");
                     await Task.Delay(interval);
-                    await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたらボットがあなたに「仕事はおわりましたか？」と聞いてきます。");
+                    await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたら私がアナタに「仕事はおわりましたか？」と聞きます。");
                     await Task.Delay(interval);
-                    await context.PostAsync("「はい」と応えるとボットはその時の時刻を終業時間として記録します。");
+                    await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間として記録します。");
                     await Task.Delay(interval);
-                    await context.PostAsync("「いいえ」と応える、または無視すると、ボットは３０分後にまた聞いてきます。");
+                    await context.PostAsync("「いいえ」と応える、または無視すると、私は３０分後に再び聞きます。");
                     await Task.Delay(interval);
-                    await context.PostAsync("毎日ボットに応えるだけで、月末には上司に提出するための日報ができています。ぜひ使ってみてください。");
+                    await context.PostAsync("毎日私の問いに応えるだけで、月末には上司に提出するための日報ができています。ぜひ私に登録してみてください。");
                     break;
                 case MenuType.Others:
                     PromptDialog.Choice<Menu<SubMenuType>>(context, SubMenuProcessAsync,
@@ -234,7 +234,7 @@ namespace TimecardBot.Dialogs
             await userRepo.AddUser(userId, order.NickName, $"{((int)order.EndOfWorkTime):00}00", "2400", tzTokyo.Id, JsonConvert.SerializeObject(conversationRef));
             _currentUser = await userRepo.GetUserById(userId);
 
-            await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを私が聞きますのでよろしくお願いします。");
+            await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
 
             context.Wait(MessageReceivedAsync);
         }
@@ -295,7 +295,7 @@ namespace TimecardBot.Dialogs
             var confirm = await argument;
             if (confirm)
             {
-                PromptDialog.Confirm(context, UnregistUserAsync, "本当に削除してよろしいですか？");
+                PromptDialog.Confirm(context, UnregistUserAsync, "退会すると記録されているデータが全て削除されます。本当に削除してよろしいですか？（これが最後の確認です）");
                 return;
             }
             else
@@ -312,7 +312,7 @@ namespace TimecardBot.Dialogs
             {
                 var userRepo = new UsersRepository();
                 await userRepo.DeleteUser(_currentUser.UserId);
-                await context.PostAsync("ユーザーを削除しました。");
+                await context.PostAsync("ユーザーを削除しました。またのご利用をお待ちしております。");
                 _currentUser = null;
             }
             else

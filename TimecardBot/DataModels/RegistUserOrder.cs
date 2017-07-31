@@ -10,9 +10,11 @@ namespace TimecardBot.DataModels
     [Serializable]
     public sealed class RegistUserOrder
     {
+        [Prompt("{&} を入力してください。")]
         [Describe("ニックネーム")]
         public string NickName { get; set; }
 
+        [Prompt("{&} を選択してください。{||}")]
         [Describe("終業時刻")]
         public EndOfWorkTimeType EndOfWorkTime;
 
@@ -29,7 +31,8 @@ namespace TimecardBot.DataModels
                         "以下の情報でユーザー登録します。\n\n  \n\n" +
                         $"・ニックネーム: {order.NickName}\n\n" +
                         $"・終業時刻: {order.EndOfWorkTime}\n\n  \n\n" +
-                        "よろしいですか？（はい／いいえ）");
+                        "よろしいですか？ {||}")
+;
                 }
 )
                 .AddRemainingFields()
