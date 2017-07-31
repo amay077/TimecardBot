@@ -46,13 +46,15 @@ namespace TimecardFunctions
                 var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
                 var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser); // ユーザーのタイムゾーンでの現在時刻
                 var nowUserTzText = $"{nowUserTz.Year:0000}/{nowUserTz.Month:00}/{nowUserTz.Day:00}";  // ユーザーTZ現在時刻を文字列化
+                var nowHour = nowUserTz.Hour;
+                var nowStepedMinute = nowUserTz.Minute / 30 * 30;
 
                 Util.ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
                 Util.ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
 
                 var startTotalMinute = startHour * 60 + startMinute;
                 var endTotalMinute = endHour * 60 + endMinute;
-                var nowTotalMinute = nowUserTz.Hour * 60 + nowUserTz.Minute;
+                var nowTotalMinute = nowHour * 60 + nowStepedMinute;
 
                 var stateEntity = await conversationStateRepo.GetStatusByUserId(user.UserId);
 
@@ -93,10 +95,8 @@ namespace TimecardFunctions
                     var message = conversationRef.GetPostToUserMessage();
                     message = message.CreateReply();
 
-                    var hour = nowUserTz.Hour;
-                    var minute = nowUserTz.Minute / 30 * 30;
-                    message.Text = $"{user.NickName} さん、お疲れさまです。{hour}時{minute:00}分 です、今日のお仕事は終わりましたか？" +
-                        $"（y:終わった／n:終わってない／d:今日は徹夜）";
+                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowHour}時{nowStepedMinute:00}分 です、今日のお仕事は終わりましたか？\n\n" +
+                        $"--\n\ny:終わった\n\nn:終わってない\n\nd:今日は徹夜";
                     message.Locale = "ja-Jp";
 
                     //message.Attachments.Add(new Attachment()
@@ -108,7 +108,7 @@ namespace TimecardFunctions
                     await connector.Conversations.ReplyToActivityAsync(message);
 
                     await conversationStateRepo.UpsertState(
-                        user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{hour:00}{minute:00}",
+                        user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
                         nowUserTzText);
                 }
                 else
