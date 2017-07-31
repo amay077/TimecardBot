@@ -6,18 +6,18 @@ using System.Web;
 namespace TimecardBot.Menus
 {
     [Serializable]
-    public struct Menu
+    public struct Menu<E> where E:struct
     {
-        public MenuType Type { get; set; }
+        public E Type { get; set; }
 
         public override string ToString()
         {
             return Type.ToAlias();
         }
 
-        public static Menu Make(MenuType type)
+        public static Menu<E> Make(E type)
         {
-            return new Menu { Type = type };
+            return new Menu<E> { Type = type };
         }
     }
 }

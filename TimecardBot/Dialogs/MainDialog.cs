@@ -18,7 +18,7 @@ using TimecardBot.Menus;
 namespace TimecardBot.Dialogs
 {
     [Serializable]
-    public class MainDialog : IDialog<object>
+    public class MainDialog2 : IDialog<object>
     {
         protected int count = 1;
         private User _currentUser;
@@ -44,7 +44,7 @@ namespace TimecardBot.Dialogs
 
             if (message.EqualsIntent("menu", "メニュー"))
             {
-                PromptDialog.Choice<Menu>(context, MenuProcessAsync,
+                PromptDialog.Choice<Menu<MenuType>>(context, MenuProcessAsync,
                     BuildMenus(),  "タイムカードボットのメインメニューです。操作を選択して下さい。");
             }
             else if (message.EqualsIntent("reset", "リセット"))
@@ -124,26 +124,25 @@ namespace TimecardBot.Dialogs
             }
         }
 
-        private IEnumerable<Menu> BuildMenus()
+        private IEnumerable<Menu<MenuType>> BuildMenus()
         {
-            var menus = new List<Menu>();
+            var menus = new List<Menu<MenuType>>();
 
             if (_currentUser == null)
             {
                 // 未登録ユーザー
-                menus.Add(Menu.Make(MenuType.RegistUser));
-                menus.Add(Menu.Make(MenuType.AboutThis));
-                menus.Add(Menu.Make(MenuType.Cancel));
+                menus.Add(Menu<MenuType>.Make(MenuType.RegistUser));
+                menus.Add(Menu<MenuType>.Make(MenuType.AboutThis));
+                menus.Add(Menu<MenuType>.Make(MenuType.Cancel));
             }
             else
             {
                 // 登録済みユーザー
-                menus.Add(Menu.Make(MenuType.DownloadTimecard));
-                menus.Add(Menu.Make(MenuType.ModityTimecard));
-                menus.Add(Menu.Make(MenuType.PostFeedback));
-                menus.Add(Menu.Make(MenuType.AboutThis));
-                menus.Add(Menu.Make(MenuType.UnregistUser));
-                menus.Add(Menu.Make(MenuType.Cancel));
+                menus.Add(Menu<MenuType>.Make(MenuType.DownloadTimecard));
+                menus.Add(Menu<MenuType>.Make(MenuType.ModityTimecard));
+                menus.Add(Menu<MenuType>.Make(MenuType.AboutThis));
+                menus.Add(Menu<MenuType>.Make(MenuType.Others));
+                menus.Add(Menu<MenuType>.Make(MenuType.Cancel));
             }
 
             return menus;
@@ -165,43 +164,86 @@ namespace TimecardBot.Dialogs
             }
         }
 
-        public async Task MenuProcessAsync(IDialogContext context, IAwaitable<Menu> argument)
+        public async Task MenuProcessAsync(IDialogContext context, IAwaitable<Menu<MenuType>> argument)
         {
             var confirm = await argument;
-            if (confirm.Type == MenuType.RegistUser)
-            {
-                var userRepo = new UsersRepository();
-                if (_currentUser != null)
-                {
-                    await context.PostAsync("あなたは既にユーザー登録されています。");
-                }
-                else
-                {
-                    //PromptDialog.Confirm(context, ResetCountAsync, "リセットしますか?");
 
-                    PromptDialog.Confirm(context, RegistUserAsync, "ユーザー登録を行ってよいですか？");
+            switch (confirm.Type)
+            {
+                case MenuType.RegistUser:
+                    var userRepo = new UsersRepository();
+                    if (_currentUser != null)
+                    {
+                        await context.PostAsync("あなたは既にユーザー登録されています。");
+                    }
+                    else
+                    {
+                        //PromptDialog.Confirm(context, ResetCountAsync, "リセットしますか?");
+
+                        PromptDialog.Confirm(context, RegistUserAsync, "ユーザー登録を行ってよいですか？");
+                        return;
+                    }
+                    break;
+                case MenuType.DownloadTimecard:
+                    break;
+                case MenuType.ModityTimecard:
+                    break;
+                case MenuType.AboutThis: // このボットについて
+                    var interval = 3000;
+                    await context.PostAsync("このボットは、終業時間を毎日EXCELに記録するのが面倒なあなたのためのボットです。");
+                    await Task.Delay(interval);
+                    await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたらボットがあなたに「仕事はおわりましたか？」と聞いてきます。");
+                    await Task.Delay(interval);
+                    await context.PostAsync("「はい」と応えるとボットはその時の時刻を終業時間として記録します。");
+                    await Task.Delay(interval);
+                    await context.PostAsync("「いいえ」と応える、または無視すると、ボットは３０分後にまた聞いてきます。");
+                    await Task.Delay(interval);
+                    await context.PostAsync("毎日ボットに応えるだけで、月末には上司に提出するための日報ができています。ぜひ使ってみてください。");
+                    break;
+                case MenuType.Others:
+                    PromptDialog.Choice<Menu<SubMenuType>>(context, SubMenuProcessAsync,
+                        new Menu<SubMenuType>[]
+                        {
+                            Menu<SubMenuType>.Make(SubMenuType.PostFeedback),
+                            Menu<SubMenuType>.Make(SubMenuType.UnregistUser),
+                            Menu<SubMenuType>.Make(SubMenuType.Cancel)
+                        }, "その他の機能です。操作を選択して下さい。");
                     return;
-                }
+                case MenuType.Cancel:
+                    await context.PostAsync("メニューを閉じました。");
+                    break;
+                default:
+                    await context.PostAsync("無効なメニューが選択されました。");
+                    break;
             }
-            else if (confirm.Type == MenuType.UnregistUser)
+            context.Wait(MessageReceivedAsync);
+        }
+
+        public async Task SubMenuProcessAsync(IDialogContext context, IAwaitable<Menu<SubMenuType>> argument)
+        {
+            var choice = await argument;
+            switch (choice.Type)
             {
-                if (_currentUser == null)
-                {
-                    await context.PostAsync("ユーザー登録されていません。");
-                }
-                else
-                {
-                    PromptDialog.Confirm(context, UnregistUserConfirmAsync, "ユーザーを削除してよいですか？");
-                    return;
-                }
-            }
-            else if (confirm.Type == MenuType.Cancel)
-            {
-                await context.PostAsync("メニューを閉じました。");
-            }
-            else
-            {
-                await context.PostAsync("無効なメニューが選択されました。");
+                case SubMenuType.UnregistUser:
+                    if (_currentUser == null)
+                    {
+                        await context.PostAsync("ユーザー登録されていません。");
+                    }
+                    else
+                    {
+                        PromptDialog.Confirm(context, UnregistUserConfirmAsync, "ユーザーを削除してよいですか？");
+                        return;
+                    }
+                    break;
+                case SubMenuType.PostFeedback:
+                    
+                    break;
+                case SubMenuType.Cancel:
+                    await context.PostAsync("メニューを閉じました。");
+                    break;
+                default:
+                    await context.PostAsync("無効なメニューが選択されました。");
+                    break;
             }
             context.Wait(MessageReceivedAsync);
         }

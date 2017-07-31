@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
-namespace TimecardBot
+namespace TimecardBot.Menus
 {
     public enum MenuType
     {
@@ -12,9 +12,6 @@ namespace TimecardBot
 
         [AliasAttribute("ユーザー登録")]
         RegistUser, // ユーザー登録
-
-        [AliasAttribute("退会")]
-        UnregistUser, // ユーザー退会
 
         [AliasAttribute("日報のダウンロード")]
         DownloadTimecard,
@@ -25,8 +22,8 @@ namespace TimecardBot
         [AliasAttribute("このボットについて")]
         AboutThis,
 
-        [AliasAttribute("意見を送る")]
-        PostFeedback,
+        [AliasAttribute("その他")]
+        Others,
 
         [AliasAttribute("閉じる")]
         Cancel // キャンセル

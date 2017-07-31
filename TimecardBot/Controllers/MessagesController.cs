@@ -20,7 +20,7 @@ namespace TimecardBot
             if (activity.Type == ActivityTypes.Message)
             {
                 //await Conversation.SendAsync(activity, () => new TestDialog());
-                await Conversation.SendAsync(activity, () => new MainDialog());
+                await Conversation.SendAsync(activity, () => new MainDialog2());
             }
             else
             {
