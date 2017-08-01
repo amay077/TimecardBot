@@ -44,6 +44,8 @@ namespace TimecardBot.Dialogs
             }
 
             var message = await argument;
+            
+            Console.WriteLine($"{_currentUser?.UserId ?? "unknown user"} posted '{message.Text}'.");
 
             if (message.EqualsIntent("menu", "メニュー"))
             {
@@ -69,9 +71,25 @@ namespace TimecardBot.Dialogs
                 //    };
                 //}
 
+                // 「今日は休み」と言われたら、 AskingEoW でなくともその日は休日にする
+                if (_currentUser != null && message.EqualsIntent("今日は休み", "今日は有給", "今日は有休", "休み", "有休", "有給"))
+                {
+                    await context.PostAsync($"今日はお休みなのですね、分かりました。今日はもう聞きません。よい休日をお過ごし下さい。");
+
+                    // 今日は休み にして更新
+                    stateEntity.State = AskingState.TodayIsOff;
+                    await conversationStateRepo.UpsertState(stateEntity);
+
+                    // もし終業時刻が登録済みだったら削除する
+                    var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+                    var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser); // ユーザーのタイムゾーンでの現在時刻
+
+                    var monthlyTimecardRepo = new MonthlyTimecardRepository();
+                    await monthlyTimecardRepo.DeleteTimecardRecord(_currentUser.UserId, nowUserTz.Year, nowUserTz.Month, nowUserTz.Day);
+                }
                 // 終業かを問い合わせ中なら、
                 // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
-                if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
+                else if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
                 {
                     if (message.EqualsIntent("y", "yes", "ok", "はい")) // y:はい
                     {
@@ -91,6 +109,14 @@ namespace TimecardBot.Dialogs
                         await context.PostAsync($"お疲れさまでした。{month}月{day}日 の終業時刻は {eowHour}時{eowMinute:00}分 を記録しました。");
                     }
                     else if (message.EqualsIntent("d")) // d:もう聞かないで
+                    {
+                        await context.PostAsync($"分かりました。今日はもう聞きません。");
+
+                        // 今日はもう聞かないにして更新
+                        stateEntity.State = AskingState.DoNotAskToday;
+                        await conversationStateRepo.UpsertState(stateEntity);
+                    }
+                    else if (message.EqualsIntent("今日は休み")) // d:もう聞かないで
                     {
                         await context.PostAsync($"分かりました。今日はもう聞きません。");
 
@@ -228,10 +254,28 @@ namespace TimecardBot.Dialogs
 
             var conversationRef = context.Activity.ToConversationReference();
 
+            // 有効な曜日群の抽出（例： 日火土→ 0101110）
+            var days = new[] { "日", "月", "火", "水", "木", "金", "土" };
+            var dayOfWeelEnables = days.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y)=> x + y);
+
+            // 休日群の抽出
+            //var holidays = order.Holidays.Split(',', ' ')
+            //    ?.Select(x => x.Trim())
+            //    ?.Where(x=> 
+            //    {
+            //        DateTime dummy;
+            //        return DateTime.TryParse(x, out dummy);
+            //    })
+            //    ?.Distinct()
+            //    ?.ToList() ?? default(IList<string>);
+            var holidays = default(IList<string>);
+
+
             var userRepo = new UsersRepository();
             var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
             var userId = await GetFirstMember(context.Activity as Activity);
-            await userRepo.AddUser(userId, order.NickName, $"{((int)order.EndOfWorkTime):00}00", "2400", tzTokyo.Id, JsonConvert.SerializeObject(conversationRef));
+            await userRepo.AddUser(userId, order.NickName, $"{((int)order.EndOfWorkTime):00}00", "2400", tzTokyo.Id,
+                JsonConvert.SerializeObject(conversationRef), dayOfWeelEnables, holidays);
             _currentUser = await userRepo.GetUserById(userId);
 
             await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
@@ -264,28 +308,6 @@ namespace TimecardBot.Dialogs
                 default:
                     await context.PostAsync("無効なメニューが選択されました。");
                     break;
-            }
-            context.Wait(MessageReceivedAsync);
-        }
-
-        public async Task RegistUserAsync(IDialogContext context, IAwaitable<bool> argument)
-        {
-            var confirm = await argument;
-            if (confirm)
-            {
-                var conversationRef = context.Activity.ToConversationReference();
-
-                var userRepo = new UsersRepository();
-                var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
-                var userId = await GetFirstMember(context.Activity as Activity);
-                await userRepo.AddUser(userId, "Mike", "1900", "2400", tzTokyo.Id, JsonConvert.SerializeObject(conversationRef));
-                _currentUser = await userRepo.GetUserById(userId);
-
-                await context.PostAsync("ユーザーを登録しました。");
-            }
-            else
-            {
-                await context.PostAsync("ユーザー登録しませんでした。");
             }
             context.Wait(MessageReceivedAsync);
         }

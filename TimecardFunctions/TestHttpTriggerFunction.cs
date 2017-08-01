@@ -28,7 +28,7 @@ namespace TimecardFunctions
 
             string disableFilter = req.GetQueryNameValuePairs()
                 .FirstOrDefault(q => string.Compare(q.Key, "disableFilter", true) == 0)
-                .Value;
+                .Value ?? "false";
 
             // Get request body
             dynamic data = await req.Content.ReadAsAsync<object>();

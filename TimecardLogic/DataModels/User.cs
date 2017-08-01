@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -30,10 +32,13 @@ namespace TimecardLogic.DataModels
 
         // Json化された Conversation
         public string ConversationRef { get; }
+        public string DayOfWeekEnables { get; }
+        public string HolidaysJson { get; }
 
         public User(string userId, string nickName,
             string askEndOfWorkStartTime, string askEndOfWorkEndTime, 
-            string timeZoneId, string conversationRef)
+            string timeZoneId, string conversationRef,
+            string dayOfWeekEnables, string holidaysJson)
         {
             UserId = userId;
             NickName = nickName;
@@ -41,7 +46,44 @@ namespace TimecardLogic.DataModels
             AskEndOfWorkEndTime = askEndOfWorkEndTime;
             TimeZoneId = timeZoneId;
             ConversationRef = conversationRef;
+            DayOfWeekEnables = dayOfWeekEnables;
+            HolidaysJson = holidaysJson;
         }
+
+        public IList<string> GetHolidaysAsList()
+        {
+            return GetHolidaysListFromJson(HolidaysJson);
+        }
+
+        public static IList<string> GetHolidaysListFromJson(string holidaysJson)
+        {
+            if (holidaysJson == null)
+            {
+                return default(IList<string>);
+            }
+
+            var holydays = new List<string>();
+            var holidayArray = (JArray)JsonConvert.DeserializeObject(holidaysJson);
+            if (holidayArray != null)
+            {
+                foreach (var item in holidayArray.ToObject<List<string>>())
+                {
+                    holydays.Add(item);
+                }
+            }
+            return holydays;
+        }
+
+        public static string GetHolidaysJsonFromList(IList<string> holidays)
+        {
+            if (holidays == null)
+            {
+                return string.Empty;
+            }
+
+            return JsonConvert.SerializeObject(holidays.ToArray<string>());
+        }
+
 
     }
 }

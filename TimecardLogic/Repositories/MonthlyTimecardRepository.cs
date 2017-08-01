@@ -104,5 +104,42 @@ namespace TimecardLogic.Repositories
             await _monthlyTimecardTable.ExecuteAsync(upsertOp);
         }
 
+        public async Task DeleteTimecardRecord(string userId, int year, int month, int day)
+        {
+            // 既存の月次タイムカードを得る
+            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, year, month);
+            IList<TimecardRecord> timecardRecords = new List<TimecardRecord>();
+            if (monthlyTimecardEntity == null)
+            {
+                // 見つからなければ終わり
+                return;
+            }
+            else
+            {
+                // 得られたら、月次タイムカード内にJsonで入っている各日のタイムカード情報をデシリアライズして得る
+                timecardRecords = monthlyTimecardEntity.GetTimecardsAsList();
+            }
+
+            // 月次タイムカード内の各日のタイムカード群から該当日を検索する
+            var hit = timecardRecords.FirstOrDefault(x => x.Day == day);
+            if (hit != null)
+            {
+                // 見つかればそれをリストから削除
+                timecardRecords.Remove(hit);
+            }
+            else
+            {
+                // 見つからなければ終わり
+                return;
+            }
+
+            // Jsonにシリアライズして戻す
+            monthlyTimecardEntity.SetTimecardDataJsonFromList(timecardRecords);
+
+
+            // 月次タイムカードをUpsertする
+            var upsertOp = TableOperation.InsertOrReplace(monthlyTimecardEntity);
+            await _monthlyTimecardTable.ExecuteAsync(upsertOp);
+        }
     }
 }

@@ -92,16 +92,19 @@ namespace TimecardLogic.Repositories
                 });
         }
 
-        public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef)
+        public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef,
+            string dayOfWeekEnables, IList<string> holidays)
         {
             // エンティティ作成
             var user = new UserEntity(_paritionKey, userId)
             {
                 NickName = nickName,
                 AskEndOfWorkStartTime = askEndOfWorkStartTime,
-                AskEndOfWorkEndTime  = askEndOfWorkEndTime,
+                AskEndOfWorkEndTime = askEndOfWorkEndTime,
                 TimeZoneId = timeZoneId,
-                ConversationRef = conversationRef
+                ConversationRef = conversationRef,
+                DayOfWeekEnables = dayOfWeekEnables,
+                HolidaysJson = User.GetHolidaysJsonFromList(holidays)
             };
 
             // Create the TableOperation object that inserts the customer entity.

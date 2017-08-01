@@ -11,6 +11,7 @@ using AdaptiveCards;
 using Newtonsoft.Json;
 using TimecardLogic;
 using Microsoft.Azure.WebJobs.Host;
+using TimecardLogic.DataModels;
 
 namespace TimecardFunctions
 {
@@ -40,6 +41,8 @@ namespace TimecardFunctions
             _log.Info($"処理ユーザー数: {users.Count()}");
             foreach (var user in users)
             {
+                _log.Info($"ユーザー: {user.NickName}({user.UserId})");
+
                 int startHour, startMinute;
                 int endHour, endMinute;
 
@@ -52,9 +55,15 @@ namespace TimecardFunctions
                 Util.ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
                 Util.ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
 
-                var startTotalMinute = startHour * 60 + startMinute;
-                var endTotalMinute = endHour * 60 + endMinute;
-                var nowTotalMinute = nowHour * 60 + nowStepedMinute;
+                var durationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
+                if (durationMinutes <= 0)
+                {
+                    _log.Warning($"{user.UserId} は、開始時刻({user.AskEndOfWorkStartTime})と終了時刻({user.AskEndOfWorkEndTime})が逆転しているので何もしない。");
+                    continue;
+                }
+
+                var rangeStart = new DateTime(nowUserTz.Year, nowUserTz.Month, nowUserTz.Day, startHour, startMinute, 0);
+                var rangeEnd = rangeStart.AddMinutes(durationMinutes);
 
                 var stateEntity = await conversationStateRepo.GetStatusByUserId(user.UserId);
 
@@ -63,58 +72,74 @@ namespace TimecardFunctions
                 // ターゲット日付と現在時刻が同じで、
                 // 打刻済/今日はもう聞かないで/休日だったら何もしない
                 var currentState = stateEntity?.State ?? AskingState.None;
-                bool containsTimeRange = true;
                 if (!disableFilter)
                 {
-                    if (string.CompareOrdinal(nowUserTzText, currentTargetDate) == 0 &&
-                        currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff)
+                    if (string.Equals(nowUserTzText, currentTargetDate) &&
+                        (currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff))
                     {
                         _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzText})が同じで、State が {currentState} なので何もしない");
                         continue;
                     }
 
-                    containsTimeRange = startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute;
+                    // 今日の曜日はユーザー設定で有効か？
+                    var enableDayOfWeek = (user.DayOfWeekEnables?.Length ?? 0) - 1 > (int)nowUserTz.DayOfWeek ?
+                        (user.DayOfWeekEnables[(int)nowUserTz.DayOfWeek] == '1') : true;
+                    if (!enableDayOfWeek)
+                    {
+                        _log.Info($"ユーザーTZ現在日付({nowUserTzText})の曜日は仕事が休みなので何もしない");
+                        continue;
+                    }
+
+                    // FIXME 毎年ある祝日か、単発の休日かの管理が面倒なので、とりまオミットしておく
+                    //// 祝日か？(面倒だからJson文字列のまま検索しちゃう)
+                    //var isHoliday = user.HolidaysJson?.Contains($"\"{nowUserTz:M/d}\"") ?? false; // "6/1" みたいにダブルコートして検索すればいいっしょ
+                    //if (isHoliday)
+                    //{
+                    //    _log.Info($"ユーザーTZ現在日付({nowUserTzText})の休日に設定されている何もしない");
+                    //    continue;
+                    //}
+
+                    var containsTimeRange = rangeStart <= nowUserTz && nowUserTz <= rangeEnd;
 
                     // 聞き取り終了時刻を過ぎていたらStateをNoneにする
                     // AskingEoW のまま y を打たれると打刻できてしまうので。
-                    if (nowTotalMinute > endTotalMinute)
+                    if (rangeStart > rangeEnd)
                     {
                         await conversationStateRepo.UpsertState(
                             user.PartitionKey, user.UserId, AskingState.None, $"{endHour:00}{endMinute:00}",
                             nowUserTzText);
                     }
+
+                    if (!containsTimeRange)
+                    {
+                        _log.Info($"現在時刻({nowUserTz}) が {rangeStart} から {rangeEnd} の範囲外なので何もしない");
+                        continue;
+                    }
                 }
 
-                if (containsTimeRange)
-                {
-                    var conversationRef = JsonConvert.DeserializeObject<ConversationReference>(user.ConversationRef);
+                var conversationRef = JsonConvert.DeserializeObject<ConversationReference>(user.ConversationRef);
 
-                    MicrosoftAppCredentials.TrustServiceUrl(conversationRef.ServiceUrl); 
-                    var connector = new ConnectorClient(new Uri(conversationRef.ServiceUrl), appId, appPassword);
+                MicrosoftAppCredentials.TrustServiceUrl(conversationRef.ServiceUrl);
+                var connector = new ConnectorClient(new Uri(conversationRef.ServiceUrl), appId, appPassword);
 
-                    var message = conversationRef.GetPostToUserMessage();
-                    message = message.CreateReply();
+                var message = conversationRef.GetPostToUserMessage();
+                message = message.CreateReply();
 
-                    message.Text = $"{user.NickName} さん、お疲れさまです。{nowHour}時{nowStepedMinute:00}分 です、今日のお仕事は終わりましたか？\n\n" +
-                        $"--\n\ny:終わった\n\nn:終わってない\n\nd:今日は徹夜";
-                    message.Locale = "ja-Jp";
+                message.Text = $"{user.NickName} さん、お疲れさまです。{nowHour}時{nowStepedMinute:00}分 です、今日のお仕事は終わりましたか？\n\n" +
+                    $"--\n\ny:終わった\n\nn:終わってない\n\nd:今日は徹夜";
+                message.Locale = "ja-Jp";
 
-                    //message.Attachments.Add(new Attachment()
-                    //{
-                    //    ContentType = AdaptiveCard.ContentType,
-                    //    Content = MakeAdaptiveCard()
-                    //});
+                //message.Attachments.Add(new Attachment()
+                //{
+                //    ContentType = AdaptiveCard.ContentType,
+                //    Content = MakeAdaptiveCard()
+                //});
 
-                    await connector.Conversations.ReplyToActivityAsync(message);
+                await connector.Conversations.ReplyToActivityAsync(message);
 
-                    await conversationStateRepo.UpsertState(
-                        user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
-                        nowUserTzText);
-                }
-                else
-                {
-                    _log.Info($"現在時刻({nowUserTz}) が {user.AskEndOfWorkStartTime} から {user.AskEndOfWorkEndTime} の範囲外なので何もしない");
-                }
+                await conversationStateRepo.UpsertState(
+                    user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
+                    nowUserTzText);
             }
         }
 

@@ -21,7 +21,7 @@ namespace TimecardLogic.Entities
 
         public UserEntity() { }
 
-        public string UserId { get; set;  } // getter がないと Table Storage に列が追加されなかった
+        public string UserId { get; set; } // getter がないと Table Storage に列が追加されなかった
 
         public string NickName { get; set; }
 
@@ -37,9 +37,16 @@ namespace TimecardLogic.Entities
         // Json化された Conversation
         public string ConversationRef { get; set; }
 
+        /// <summary>
+        /// 曜日毎の有効無効(0 or 1:有効、日月火水木金土)
+        /// </summary>
+        public string DayOfWeekEnables { get; set; }
+
+        public string HolidaysJson { get; set; }
+
         public User ToModel()
         {
-            return new User(UserId, NickName, AskEndOfWorkStartTime, AskEndOfWorkEndTime, TimeZoneId, ConversationRef);
+            return new User(UserId, NickName, AskEndOfWorkStartTime, AskEndOfWorkEndTime, TimeZoneId, ConversationRef, DayOfWeekEnables, HolidaysJson);
         }
     }
 }

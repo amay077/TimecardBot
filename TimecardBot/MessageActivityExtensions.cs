@@ -42,7 +42,7 @@ namespace TimecardBot
 
         private static string Clean(string text)
         {
-            return _regex.Replace(text, "");
+            return _regex.Replace(text.Replace("\n", ""), "");
         }
     }
 }
