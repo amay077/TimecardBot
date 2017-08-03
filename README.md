@@ -25,3 +25,7 @@ Bot Framework のおかげで、次のチャットサービス?に対応して�
 
 [他にも対応できる](https://docs.microsoft.com/en-us/bot-framework/portal-configure-channels) ようだけど、まあニーズがあれば。
 いろいろやりたいことは [issues](https://github.com/amay077/TimecardBot/issues) に書いていくので、なにかあればどなたでも追加やコメントください。
+
+Visual Studio 2017 preview 2 と Bot Framework Template や Bot Framework Emulator があれば、このリポジトリを clone して手元で動作させられると思います（preview 2 が必要なのは Azure Functions の方なので、Bot だけなら普通の VS2017 でいけます）。
+
+Skype と Slack の BOT は準備ができたら一般向けに公開するつもりなので、もうしばらくお待ち下さい。
