@@ -45,25 +45,33 @@ namespace TimecardFunctions
 
                 int startHour, startMinute;
                 int endHour, endMinute;
-
-                var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
-                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser); // ユーザーのタイムゾーンでの現在時刻
-                var nowUserTzText = $"{nowUserTz.Year:0000}/{nowUserTz.Month:00}/{nowUserTz.Day:00}";  // ユーザーTZ現在時刻を文字列化
-                var nowHour = nowUserTz.Hour;
-                var nowStepedMinute = nowUserTz.Minute / 30 * 30;
-
                 Util.ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
                 Util.ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
 
-                var durationMinutes = (endHour * 60 + endMinute) - (startHour * 60 + startMinute);
-                if (durationMinutes <= 0)
+                // 24時超過分をオフセットして比較する
+                // 19:00～26:00 の設定だった時に、翌日の深夜1時(25時)も送信対象となるように。
+                var offsetHour = endHour - 24;
+                if (offsetHour < 0)
+                {
+                    offsetHour = 0;
+                }
+
+                var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
+                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser).AddHours(-offsetHour); // ユーザーのタイムゾーンでの現在時刻
+                var nowHour = nowUserTz.Hour + offsetHour;
+                var nowStepedMinute = nowUserTz.Minute / 30 * 30;
+
+                var startTotalMinute = (startHour - offsetHour) * 60 + startMinute;
+                var endTotalMinute = (endHour - offsetHour) * 60 + endMinute;
+                var nowTotalMinute = (nowHour - offsetHour) * 60 + nowStepedMinute;
+
+                if (startTotalMinute >= endTotalMinute)
                 {
                     _log.Warning($"{user.UserId} は、開始時刻({user.AskEndOfWorkStartTime})と終了時刻({user.AskEndOfWorkEndTime})が逆転しているので何もしない。");
                     continue;
                 }
 
-                var rangeStart = new DateTime(nowUserTz.Year, nowUserTz.Month, nowUserTz.Day, startHour, startMinute, 0);
-                var rangeEnd = rangeStart.AddMinutes(durationMinutes);
+                var nowUserTzDateText = $"{nowUserTz.Year:0000}/{nowUserTz.Month:00}/{nowUserTz.Day:00}";  // ユーザーTZ現在時刻を文字列化
 
                 var stateEntity = await conversationStateRepo.GetStatusByUserId(user.UserId);
 
@@ -74,10 +82,10 @@ namespace TimecardFunctions
                 var currentState = stateEntity?.State ?? AskingState.None;
                 if (!disableFilter)
                 {
-                    if (string.Equals(nowUserTzText, currentTargetDate) &&
+                    if (string.Equals(nowUserTzDateText, currentTargetDate) &&
                         (currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff))
                     {
-                        _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzText})が同じで、State が {currentState} なので何もしない");
+                        _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzDateText})が同じで、State が {currentState} なので何もしない");
                         continue;
                     }
 
@@ -86,7 +94,7 @@ namespace TimecardFunctions
                         (user.DayOfWeekEnables[(int)nowUserTz.DayOfWeek] == '1') : true;
                     if (!enableDayOfWeek)
                     {
-                        _log.Info($"ユーザーTZ現在日付({nowUserTzText})の曜日は仕事が休みなので何もしない");
+                        _log.Info($"ユーザーTZ現在日付({nowUserTzDateText})の曜日は仕事が休みなので何もしない");
                         continue;
                     }
 
@@ -99,20 +107,20 @@ namespace TimecardFunctions
                     //    continue;
                     //}
 
-                    var containsTimeRange = rangeStart <= nowUserTz && nowUserTz <= rangeEnd;
+                    var containsTimeRange = startTotalMinute <= nowTotalMinute && nowTotalMinute <= endTotalMinute;
 
                     // 聞き取り終了時刻を過ぎていたらStateをNoneにする
                     // AskingEoW のまま y を打たれると打刻できてしまうので。
-                    if (rangeStart > rangeEnd)
+                    if (startTotalMinute > endTotalMinute)
                     {
                         await conversationStateRepo.UpsertState(
                             user.PartitionKey, user.UserId, AskingState.None, $"{endHour:00}{endMinute:00}",
-                            nowUserTzText);
+                            nowUserTzDateText);
                     }
 
                     if (!containsTimeRange)
                     {
-                        _log.Info($"現在時刻({nowUserTz}) が {rangeStart} から {rangeEnd} の範囲外なので何もしない");
+                        _log.Info($"現在時刻({nowUserTz}) が {user.AskEndOfWorkStartTime} から {user.AskEndOfWorkEndTime} の範囲外なので何もしない");
                         continue;
                     }
                 }
@@ -121,10 +129,17 @@ namespace TimecardFunctions
 
                 MicrosoftAppCredentials.TrustServiceUrl(conversationRef.ServiceUrl);
                 var connector = new ConnectorClient(new Uri(conversationRef.ServiceUrl), appId, appPassword);
+                
+                var userAccount = new ChannelAccount(id: user.UserId);
+                var res = connector.Conversations.CreateDirectConversation(conversationRef.Bot, userAccount);
 
-                var message = conversationRef.GetPostToUserMessage();
-                message = message.CreateReply();
-
+                // conversationRef.GetPostToUserMessage() では Slack にポストできなかったので、
+                // 普通に CreateMessageActivity した。
+                var message = Activity.CreateMessageActivity();
+                message.From = conversationRef.Bot;
+                message.Recipient = userAccount;
+                message.Conversation = new ConversationAccount(id: res.Id);
+                
                 message.Text = $"{user.NickName} さん、お疲れさまです。{nowHour}時{nowStepedMinute:00}分 です、今日のお仕事は終わりましたか？\n\n" +
                     $"--\n\ny:終わった\n\nn:終わってない\n\nd:今日は徹夜";
                 message.Locale = "ja-Jp";
@@ -135,11 +150,11 @@ namespace TimecardFunctions
                 //    Content = MakeAdaptiveCard()
                 //});
 
-                await connector.Conversations.ReplyToActivityAsync(message);
+                connector.Conversations.SendToConversation((Activity)message);
 
                 await conversationStateRepo.UpsertState(
                     user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
-                    nowUserTzText);
+                    nowUserTzDateText);
             }
         }
 
