@@ -17,6 +17,7 @@ using TimecardBot.Menus;
 using Microsoft.Bot.Builder.FormFlow;
 using static TimecardBot.MessagesController;
 using TimecardBot.DataModels;
+using System.Diagnostics;
 
 namespace TimecardBot.Dialogs
 {
@@ -44,17 +45,61 @@ namespace TimecardBot.Dialogs
             }
 
             var message = await argument;
-            
+
             Console.WriteLine($"{_currentUser?.UserId ?? "unknown user"} posted '{message.Text}'.");
 
             if (message.EqualsIntent("menu", "メニュー"))
             {
                 PromptDialog.Choice<Menu<MenuType>>(context, MenuProcessAsync,
-                    BuildMenus(),  "タイムカードボットのメインメニューです。操作を選択して下さい。");
+                    BuildMenus(), "タイムカードボットのメインメニューです。操作を選択して下さい。");
             }
             else if (message.EqualsIntent("reset", "リセット"))
             {
                 PromptDialog.Confirm(context, ResetCountAsync, "リセットしますか?");
+            }
+            else if (message.EqualsIntent("今日も一日"))
+            {
+                try
+                {
+                    var thisExe = System.Reflection.Assembly.GetExecutingAssembly();
+                    using (var file =
+                        thisExe.GetManifestResourceStream("TimecardBot.Images.ganbaruzoi.png"))
+                    {
+                        var imageArray = new byte[file.Length];
+                        file.Read(imageArray, 0, (int)file.Length);
+
+                        var mes = context.MakeMessage();
+                        //mes.Text = "がんばるぞい！";
+                        mes.Locale = "ja";
+                        var imageData = Convert.ToBase64String(imageArray);
+                        var attachment = new Attachment
+                        {
+                            Name = "ganbaruzoi.png",
+                            ContentType = "image/png",
+                            ContentUrl = $"data:image/png;base64,{imageData}"
+                        };
+                        mes.Attachments.Add(attachment);
+
+                        //mes.Attachments.Add(
+                        //    new HeroCard
+                        //    {
+                        //        Title = $"ライオン",
+                        //        Images = new List<CardImage>
+                        //        {
+                        //        new CardImage
+                        //        {
+                        //            Url = "http://free-photos-ls04.gatag.net/thum01/gf01a201503290600.jpg"
+                        //        }
+                        //        },
+                        //    }.ToAttachment());
+                        await context.PostAsync(mes);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Trace.WriteLine($"Post image failed. {ex.Message} - {ex.StackTrace}");
+                    throw;
+                }
             }
             else
             {
@@ -189,7 +234,7 @@ namespace TimecardBot.Dialogs
                 var client = scope.Resolve<IConnectorClient>();
                 var activityMembers = await client.Conversations.GetConversationMembersAsync(activity.Conversation.Id);
 
-                return activityMembers.Select(x=>x.Id).FirstOrDefault();
+                return activityMembers.Select(x => x.Id).FirstOrDefault();
             }
         }
 
@@ -256,7 +301,7 @@ namespace TimecardBot.Dialogs
 
             // 有効な曜日群の抽出（例： 日火土→ 0101110）
             var days = new[] { "日", "月", "火", "水", "木", "金", "土" };
-            var dayOfWeelEnables = days.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y)=> x + y);
+            var dayOfWeelEnables = days.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y) => x + y);
 
             // 休日群の抽出
             //var holidays = order.Holidays.Split(',', ' ')

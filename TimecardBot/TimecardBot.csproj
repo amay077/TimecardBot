@@ -124,6 +124,7 @@
   <ItemGroup>
     <Content Include="default.htm" />
     <Content Include="Global.asax" />
+    <EmbeddedResource Include="Images\ganbaruzoi.png" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
