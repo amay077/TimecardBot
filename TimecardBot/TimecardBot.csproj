@@ -156,7 +156,8 @@
     <Content Include="packages.config">
       <SubType>Designer</SubType>
     </Content>
-    <None Include="Properties\PublishProfiles\TimecardBot20170730023129 - Web Deploy.pubxml" />
+    <None Include="Properties\PublishProfiles\TimecardBot20170730023129-dev - FTP.pubxml" />
+    <None Include="Properties\PublishProfiles\TimecardBot20170730023129-dev - Web Deploy.pubxml" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
