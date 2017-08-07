@@ -26,8 +26,6 @@ namespace TimecardFunctions
 
         public async void Send(bool disableFilter)
         {
-            //var serviceUrl = "https://smba.trafficmanager.net/apis/";
-            //var serviceUrl = "https://timecardbot20170730023129.azurewebsites.net/api";
             var appId = ConfigurationManager.AppSettings["MicrosoftAppId"];
             var appPassword = ConfigurationManager.AppSettings["MicrosoftAppPassword"];
 

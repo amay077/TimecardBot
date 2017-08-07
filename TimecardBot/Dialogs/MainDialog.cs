@@ -2,22 +2,17 @@
 using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Dialogs.Internals;
 using Microsoft.Bot.Connector;
-using TimecardLogic.Repositories;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Web;
 using Microsoft.Bot.Builder.ConnectorEx;
-using Newtonsoft.Json;
-using TimecardLogic.Entities;
 using TimecardLogic.DataModels;
 using TimecardLogic;
 using TimecardBot.Menus;
 using Microsoft.Bot.Builder.FormFlow;
-using static TimecardBot.MessagesController;
 using TimecardBot.DataModels;
-using System.Diagnostics;
+using TimecardBot.Usecases;
 
 namespace TimecardBot.Dialogs
 {
@@ -39,9 +34,9 @@ namespace TimecardBot.Dialogs
             // 現在の会話のユーザーIDを得る
             if (_currentUser == null)
             {
+                var usecase = new UserUsecase();
                 var userId = await GetFirstMember(activity);
-                var userRepo = new UsersRepository();
-                _currentUser = await userRepo.GetUserById(userId);
+                _currentUser = await usecase.GetUser(userId);
             }
 
             var message = await argument;
@@ -59,78 +54,20 @@ namespace TimecardBot.Dialogs
             }
             else if (message.EqualsIntent("今日も一日"))
             {
-                try
-                {
-                    var thisExe = System.Reflection.Assembly.GetExecutingAssembly();
-                    using (var file =
-                        thisExe.GetManifestResourceStream("TimecardBot.Images.ganbaruzoi.png"))
-                    {
-                        var imageArray = new byte[file.Length];
-                        file.Read(imageArray, 0, (int)file.Length);
-
-                        var mes = context.MakeMessage();
-                        //mes.Text = "がんばるぞい！";
-                        mes.Locale = "ja";
-                        var imageData = Convert.ToBase64String(imageArray);
-                        var attachment = new Attachment
-                        {
-                            Name = "ganbaruzoi.png",
-                            ContentType = "image/png",
-                            ContentUrl = $"data:image/png;base64,{imageData}"
-                        };
-                        mes.Attachments.Add(attachment);
-
-                        //mes.Attachments.Add(
-                        //    new HeroCard
-                        //    {
-                        //        Title = $"ライオン",
-                        //        Images = new List<CardImage>
-                        //        {
-                        //        new CardImage
-                        //        {
-                        //            Url = "http://free-photos-ls04.gatag.net/thum01/gf01a201503290600.jpg"
-                        //        }
-                        //        },
-                        //    }.ToAttachment());
-                        await context.PostAsync(mes);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Trace.WriteLine($"Post image failed. {ex.Message} - {ex.StackTrace}");
-                    throw;
-                }
+                var usecase = new EasterEgg();
+                await usecase.PostGanbaruzoi(context);
             }
             else
             {
-                var conversationStateRepo = new ConversationStateRepository();
-                var stateEntity = await conversationStateRepo.GetStatusByUserId(_currentUser?.UserId ?? string.Empty);
-
-                //if (stateEntity == null)
-                //{
-                //    stateEntity = new ConversationStateEntity("debug_tenant", _currentUser.UserId)
-                //    {
-                //        State = AskingState.AskingEoW,
-                //        TargetDate = "2017/07/30",
-                //        TargetTime = "2000",
-                //    };
-                //}
+                var usecase = new MainUsecase(_currentUser);
+                var stateEntity = await usecase.GetCurrentUserStatus();
 
                 // 「今日は休み」と言われたら、 AskingEoW でなくともその日は休日にする
                 if (_currentUser != null && message.EqualsIntent("今日は休み", "今日は有給", "今日は有休", "休み", "有休", "有給"))
                 {
+                    // 今日を休みに更新
+                    await usecase.PunchTodayIsOff(stateEntity);
                     await context.PostAsync($"今日はお休みなのですね、分かりました。今日はもう聞きません。よい休日をお過ごし下さい。");
-
-                    // 今日は休み にして更新
-                    stateEntity.State = AskingState.TodayIsOff;
-                    await conversationStateRepo.UpsertState(stateEntity);
-
-                    // もし終業時刻が登録済みだったら削除する
-                    var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
-                    var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser); // ユーザーのタイムゾーンでの現在時刻
-
-                    var monthlyTimecardRepo = new MonthlyTimecardRepository();
-                    await monthlyTimecardRepo.DeleteTimecardRecord(_currentUser.UserId, nowUserTz.Year, nowUserTz.Month, nowUserTz.Day);
                 }
                 // 終業かを問い合わせ中なら、
                 // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
@@ -138,36 +75,16 @@ namespace TimecardBot.Dialogs
                 {
                     if (message.EqualsIntent("y", "yes", "ok", "はい")) // y:はい
                     {
-                        int eowHour, eowMinute;
-                        Util.ParseHHMM(stateEntity.TargetTime, out eowHour, out eowMinute);
-
-                        // 該当日のタイムカードの終業時刻を更新
-                        int year, month, day;
-                        Util.ParseYYYYMMDD(stateEntity.TargetDate, out year, out month, out day);
-                        var monthlyTimecardRepo = new MonthlyTimecardRepository();
-                        await monthlyTimecardRepo.UpsertTimecardRecord(_currentUser.UserId, year, month, day, eowHour, eowMinute);
-
-                        // 打刻済みにして更新
-                        stateEntity.State = AskingState.Punched;
-                        await conversationStateRepo.UpsertState(stateEntity);
-
-                        await context.PostAsync($"お疲れさまでした。{month}月{day}日 の終業時刻は {eowHour}時{eowMinute:00}分 を記録しました。");
+                        // 聞かれた時刻で、終業時刻を更新
+                        var eowDateTime = await usecase.PunchEoW(stateEntity);
+                        await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
+                            $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
                     }
                     else if (message.EqualsIntent("d")) // d:もう聞かないで
                     {
-                        await context.PostAsync($"分かりました。今日はもう聞きません。");
-
                         // 今日はもう聞かないにして更新
-                        stateEntity.State = AskingState.DoNotAskToday;
-                        await conversationStateRepo.UpsertState(stateEntity);
-                    }
-                    else if (message.EqualsIntent("今日は休み")) // d:もう聞かないで
-                    {
+                        await usecase.PunchDoNotAskToday(stateEntity);
                         await context.PostAsync($"分かりました。今日はもう聞きません。");
-
-                        // 今日はもう聞かないにして更新
-                        stateEntity.State = AskingState.DoNotAskToday;
-                        await conversationStateRepo.UpsertState(stateEntity);
                     }
                     else if (message.EqualsIntent("n", "no", "ng", "いいえ", "だめ")) // n:まだ
                     {
@@ -193,7 +110,6 @@ namespace TimecardBot.Dialogs
                     await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。" + text);
                 }
 
-                //await context.PostAsync(string.Format("{0}:{1}って言ったね。", this.count++, message.Text));
                 context.Wait(MessageReceivedAsync);
             }
         }
@@ -296,32 +212,11 @@ namespace TimecardBot.Dialogs
         private async Task RegistUserProcess(IDialogContext context, IAwaitable<RegistUserOrder> result)
         {
             var order = await result;
-
             var conversationRef = context.Activity.ToConversationReference();
-
-            // 有効な曜日群の抽出（例： 日火土→ 0101110）
-            var days = new[] { "日", "月", "火", "水", "木", "金", "土" };
-            var dayOfWeelEnables = days.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y) => x + y);
-
-            // 休日群の抽出
-            //var holidays = order.Holidays.Split(',', ' ')
-            //    ?.Select(x => x.Trim())
-            //    ?.Where(x=> 
-            //    {
-            //        DateTime dummy;
-            //        return DateTime.TryParse(x, out dummy);
-            //    })
-            //    ?.Distinct()
-            //    ?.ToList() ?? default(IList<string>);
-            var holidays = default(IList<string>);
-
-
-            var userRepo = new UsersRepository();
-            var tzTokyo = TimeZoneInfo.FindSystemTimeZoneById("Tokyo Standard Time");
             var userId = await GetFirstMember(context.Activity as Activity);
-            await userRepo.AddUser(userId, order.NickName, $"{((int)order.EndOfWorkTime):00}00", "2400", tzTokyo.Id,
-                JsonConvert.SerializeObject(conversationRef), dayOfWeelEnables, holidays);
-            _currentUser = await userRepo.GetUserById(userId);
+
+            var usecase = new UserUsecase();
+            _currentUser = await usecase.RegistUser(userId, order, conversationRef);
 
             await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
 
@@ -377,10 +272,10 @@ namespace TimecardBot.Dialogs
             var confirm = await argument;
             if (confirm)
             {
-                var userRepo = new UsersRepository();
-                await userRepo.DeleteUser(_currentUser.UserId);
-                await context.PostAsync("ユーザーを削除しました。またのご利用をお待ちしております。");
+                var usecase = new UserUsecase();
+                await usecase.DeleteUser(_currentUser);
                 _currentUser = null;
+                await context.PostAsync("ユーザーを削除しました。またのご利用をお待ちしております。");
             }
             else
             {
