@@ -1,11 +1,9 @@
 ﻿using Microsoft.Azure;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
-using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Web;
 using TimecardLogic.DataModels;
 using TimecardLogic.Entities;
 
@@ -58,7 +56,7 @@ namespace TimecardLogic.Repositories
                 continuationToken = tableQueryResult.ContinuationToken;
 
                 // Print the number of rows retrieved.
-                Console.WriteLine("Rows retrieved {0}", tableQueryResult.Results.Count);
+                Trace.WriteLine("Rows retrieved {0}", tableQueryResult.Results.Count.ToString());
 
                 foreach (var item in tableQueryResult.Results)
                 {

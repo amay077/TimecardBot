@@ -133,10 +133,12 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AliasAttibuteExtensions.cs" />
+    <Compile Include="Commands\AliasAttibuteExtensions.cs" />
     <Compile Include="App_Start\WebApiConfig.cs" />
+    <Compile Include="Commands\CommandResolver.cs" />
+    <Compile Include="Commands\CommandType.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
-    <Compile Include="AliasAttribute.cs" />
+    <Compile Include="Commands\AliasAttribute.cs" />
     <Compile Include="DataModels\EndOfWorkTimeType.cs" />
     <Compile Include="DataModels\RegistUserOrder.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
@@ -144,10 +146,9 @@
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
-    <Compile Include="Menus\Menu.cs" />
-    <Compile Include="Menus\MenuType.cs" />
-    <Compile Include="Menus\SubMenuType.cs" />
-    <Compile Include="MessageActivityExtensions.cs" />
+    <Compile Include="Commands\CommandAttribute.cs" />
+    <Compile Include="Commands\Command.cs" />
+    <Compile Include="Commands\ActivityExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Settings.Designer.cs">
       <AutoGen>True</AutoGen>

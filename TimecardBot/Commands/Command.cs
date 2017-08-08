@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 
-namespace TimecardBot.Menus
+namespace TimecardBot.Commands
 {
     [Serializable]
-    public struct Menu<E> where E:struct
+    public struct Command<E> where E : struct
     {
         public E Type { get; set; }
 
@@ -15,9 +15,9 @@ namespace TimecardBot.Menus
             return Type.ToAlias();
         }
 
-        public static Menu<E> Make(E type)
+        public static Command<E> Make(E type)
         {
-            return new Menu<E> { Type = type };
+            return new Command<E> { Type = type };
         }
     }
 }

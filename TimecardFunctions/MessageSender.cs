@@ -39,7 +39,7 @@ namespace TimecardFunctions
             _log.Info($"処理ユーザー数: {users.Count()}");
             foreach (var user in users)
             {
-                _log.Info($"ユーザー: {user.NickName}({user.UserId})");
+                _log.Info($"ユーザー: {user.NickName}({user.UserId}) ---");
 
                 int startHour, startMinute;
                 int endHour, endMinute;
@@ -153,6 +153,8 @@ namespace TimecardFunctions
                 await conversationStateRepo.UpsertState(
                     user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
                     nowUserTzDateText);
+
+                _log.Info($"メッセージを送信しました。 ({message.Text})");
             }
         }
 
