@@ -12,6 +12,7 @@ using Newtonsoft.Json;
 using TimecardLogic;
 using Microsoft.Azure.WebJobs.Host;
 using TimecardLogic.DataModels;
+using System.Diagnostics;
 
 namespace TimecardFunctions
 {
@@ -24,22 +25,24 @@ namespace TimecardFunctions
             _log = log;
         }
 
-        public async void Send(bool disableFilter)
+        public void Send(bool disableFilter)
         {
             var appId = ConfigurationManager.AppSettings["MicrosoftAppId"];
             var appPassword = ConfigurationManager.AppSettings["MicrosoftAppPassword"];
 
             var nowUtc = DateTime.Now.ToUniversalTime();
+            Log($"UTC現在時刻: {nowUtc}");
+            Trace.WriteLine($"UTC現在時刻- {nowUtc}");
 
             var usersRepo = new UsersRepository();
             var users = await usersRepo.GetAllUsers();
 
             var conversationStateRepo = new ConversationStateRepository();
 
-            _log.Info($"処理ユーザー数: {users.Count()}");
+            Log($"処理ユーザー数: {users.Count()}");
             foreach (var user in users)
             {
-                _log.Info($"ユーザー: {user.NickName}({user.UserId}) ---");
+                Log($"ユーザー: {user.NickName}({user.UserId}) ---");
 
                 int startHour, startMinute;
                 int endHour, endMinute;
@@ -48,24 +51,31 @@ namespace TimecardFunctions
 
                 // 24時超過分をオフセットして比較する
                 // 19:00～26:00 の設定だった時に、翌日の深夜1時(25時)も送信対象となるように。
-                var offsetHour = endHour - 24;
+                var offsetHour = endHour - 23;
                 if (offsetHour < 0)
                 {
                     offsetHour = 0;
                 }
+                Log($"オフセット時間: {offsetHour}h");
 
                 var tzUser = TimeZoneInfo.FindSystemTimeZoneById(user.TimeZoneId);
-                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser).AddHours(-offsetHour); // ユーザーのタイムゾーンでの現在時刻
+                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tzUser); // ユーザーのタイムゾーンでの現在時刻
+                Log($"ユーザータイムゾーンの現在時刻(オフセット前): {nowUserTz}");
+                nowUserTz = nowUserTz.AddHours(-offsetHour);
                 var nowHour = nowUserTz.Hour + offsetHour;
                 var nowStepedMinute = nowUserTz.Minute / 30 * 30;
+                Log($"ユーザータイムゾーンの現在時刻(オフセット前、丸め後): {nowHour}時{nowStepedMinute:00}分");
 
                 var startTotalMinute = (startHour - offsetHour) * 60 + startMinute;
                 var endTotalMinute = (endHour - offsetHour) * 60 + endMinute;
                 var nowTotalMinute = (nowHour - offsetHour) * 60 + nowStepedMinute;
+                Log($"ユーザータイムゾーンの現在時刻(オフセット後、丸め後): {(nowHour - offsetHour)}時{nowStepedMinute:00}分");
+                Log($"判定時刻範囲（オフセット前）: {startHour}時{startMinute:00}分～{endHour}時{endMinute:00}分");
+                Log($"判定時刻範囲（オフセット後）: {(startHour - offsetHour)}時{startMinute:00}分～{(endHour - offsetHour)}時{endMinute:00}分");
 
                 if (startTotalMinute >= endTotalMinute)
                 {
-                    _log.Warning($"{user.UserId} は、開始時刻({user.AskEndOfWorkStartTime})と終了時刻({user.AskEndOfWorkEndTime})が逆転しているので何もしない。");
+                    Log($"{user.UserId} は、開始時刻({user.AskEndOfWorkStartTime})と終了時刻({user.AskEndOfWorkEndTime})が逆転しているので何もしない。");
                     continue;
                 }
 
@@ -83,7 +93,7 @@ namespace TimecardFunctions
                     if (string.Equals(nowUserTzDateText, currentTargetDate) &&
                         (currentState == AskingState.DoNotAskToday || currentState == AskingState.Punched || currentState == AskingState.TodayIsOff))
                     {
-                        _log.Info($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzDateText})が同じで、State が {currentState} なので何もしない");
+                        Log($"ターゲット日付({currentTargetDate})とユーザーTZ現在日付({nowUserTzDateText})が同じで、State が {currentState} なので何もしない");
                         continue;
                     }
 
@@ -92,7 +102,7 @@ namespace TimecardFunctions
                         (user.DayOfWeekEnables[(int)nowUserTz.DayOfWeek] == '1') : true;
                     if (!enableDayOfWeek)
                     {
-                        _log.Info($"ユーザーTZ現在日付({nowUserTzDateText})の曜日は仕事が休みなので何もしない");
+                        Log($"ユーザーTZ現在日付({nowUserTzDateText})の曜日は仕事が休みなので何もしない");
                         continue;
                     }
 
@@ -101,7 +111,7 @@ namespace TimecardFunctions
                     //var isHoliday = user.HolidaysJson?.Contains($"\"{nowUserTz:M/d}\"") ?? false; // "6/1" みたいにダブルコートして検索すればいいっしょ
                     //if (isHoliday)
                     //{
-                    //    _log.Info($"ユーザーTZ現在日付({nowUserTzText})の休日に設定されている何もしない");
+                    //    Log($"ユーザーTZ現在日付({nowUserTzText})の休日に設定されている何もしない");
                     //    continue;
                     //}
 
@@ -118,7 +128,7 @@ namespace TimecardFunctions
 
                     if (!containsTimeRange)
                     {
-                        _log.Info($"現在時刻({nowUserTz}) が {user.AskEndOfWorkStartTime} から {user.AskEndOfWorkEndTime} の範囲外なので何もしない");
+                        Log($"現在時刻({nowUserTz}) が {user.AskEndOfWorkStartTime} から {user.AskEndOfWorkEndTime} の範囲外なので何もしない");
                         continue;
                     }
                 }
@@ -154,8 +164,14 @@ namespace TimecardFunctions
                     user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
                     nowUserTzDateText);
 
-                _log.Info($"メッセージを送信しました。 ({message.Text})");
+                Log($"メッセージを送信しました。 ({message.Text})");
             }
+        }
+
+        private void Log(string text)
+        {
+            _log.Info(text);
+            Console.WriteLine(text);
         }
 
         private AdaptiveCard MakeAdaptiveCard()
