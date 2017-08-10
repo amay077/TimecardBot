@@ -31,11 +31,10 @@ namespace TimecardFunctions
             var appPassword = ConfigurationManager.AppSettings["MicrosoftAppPassword"];
 
             var nowUtc = DateTime.Now.ToUniversalTime();
-            Log($"UTC現在時刻: {nowUtc}");
-            Trace.WriteLine($"UTC現在時刻- {nowUtc}");
+            Log($"UTC現在時刻- {nowUtc}");
 
             var usersRepo = new UsersRepository();
-            var users = await usersRepo.GetAllUsers();
+            var users = usersRepo.GetAllUsers().RunAsSync();
 
             var conversationStateRepo = new ConversationStateRepository();
 
@@ -81,7 +80,7 @@ namespace TimecardFunctions
 
                 var nowUserTzDateText = $"{nowUserTz.Year:0000}/{nowUserTz.Month:00}/{nowUserTz.Day:00}";  // ユーザーTZ現在時刻を文字列化
 
-                var stateEntity = await conversationStateRepo.GetStatusByUserId(user.UserId);
+                var stateEntity = conversationStateRepo.GetStatusByUserId(user.UserId).RunAsSync();
 
                 var currentTargetDate = stateEntity?.TargetDate ?? "2000/01/01";
 
@@ -121,9 +120,9 @@ namespace TimecardFunctions
                     // AskingEoW のまま y を打たれると打刻できてしまうので。
                     if (startTotalMinute > endTotalMinute)
                     {
-                        await conversationStateRepo.UpsertState(
+                        conversationStateRepo.UpsertState(
                             user.PartitionKey, user.UserId, AskingState.None, $"{endHour:00}{endMinute:00}",
-                            nowUserTzDateText);
+                            nowUserTzDateText).RunAsSync();
                     }
 
                     if (!containsTimeRange)
@@ -160,9 +159,9 @@ namespace TimecardFunctions
 
                 connector.Conversations.SendToConversation((Activity)message);
 
-                await conversationStateRepo.UpsertState(
+                conversationStateRepo.UpsertState(
                     user.PartitionKey, conversationRef.User.Id, AskingState.AskingEoW, $"{nowHour:00}{nowStepedMinute:00}",
-                    nowUserTzDateText);
+                    nowUserTzDateText).RunAsSync();
 
                 Log($"メッセージを送信しました。 ({message.Text})");
             }
@@ -170,8 +169,8 @@ namespace TimecardFunctions
 
         private void Log(string text)
         {
+            Trace.WriteLine(text);
             _log.Info(text);
-            Console.WriteLine(text);
         }
 
         private AdaptiveCard MakeAdaptiveCard()
