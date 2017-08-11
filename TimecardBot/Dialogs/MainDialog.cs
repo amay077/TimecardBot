@@ -61,6 +61,12 @@ namespace TimecardBot.Dialogs
                 case CommandType.DownloadTimecard:
                     handleMessage = await CommandDownloadTimecardAsync(context, command);
                     break;
+                case CommandType.DownloadTimecardThisMonth:
+                    handleMessage = await CommandDownloadTimecardThisMonthAsync(context, command);
+                    break;
+                case CommandType.DownloadTimecardPreviousMonth:
+                    handleMessage = await CommandDownloadTimecardPreviousMonthAsync(context, command);
+                    break;
                 case CommandType.ModityTimecard:
                     handleMessage = await CommandModityTimecardAsync(context, command);
                     break;
@@ -176,7 +182,7 @@ namespace TimecardBot.Dialogs
             }
             else
             {
-                await context.PostAsync($"今は仕事の終わりを聞いていません。終業時刻を記録するには 日報の編集 とタイプして下さい。");
+                await context.PostAsync($"今は仕事の終わりを聞いていません。終業時刻を記録するには タイムカードの編集 とタイプして下さい。");
             }
 
             return false;
@@ -294,7 +300,80 @@ namespace TimecardBot.Dialogs
             var usecase = new MainUsecase(_currentUser);
             var dumped = await usecase.DumpTimecard(order.YearMonth);
 
-            await context.PostAsync(dumped);
+            int year = 0;
+            int month = 0;
+            Util.ParseYYYYMM(order.YearMonth, out year, out month);
+
+            if (string.IsNullOrEmpty(dumped))
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+            }
+            else
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードです。");
+                await context.PostAsync(dumped);
+            }
+        }
+
+        private async Task<bool> CommandDownloadTimecardThisMonthAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            // ユーザーのタイムゾーンでの現在時刻
+            var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+            var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser);
+
+            int year = nowUserTz.Year;
+            int month = nowUserTz.Month;
+            var usecase = new MainUsecase(_currentUser);
+            var dumped = await usecase.DumpTimecard($"{nowUserTz.Year:0000}{nowUserTz.Month:00}");
+
+            if (string.IsNullOrEmpty(dumped))
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+            }
+            else
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードです。");
+                await context.PostAsync(dumped);
+            }
+
+            return false;
+        }
+
+
+        private async Task<bool> CommandDownloadTimecardPreviousMonthAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            // ユーザーのタイムゾーンでの現在時刻
+            var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+            var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser).AddMonths(-1); // 先月
+
+            int year = nowUserTz.Year;
+            int month = nowUserTz.Month;
+            var usecase = new MainUsecase(_currentUser);
+            var dumped = await usecase.DumpTimecard($"{nowUserTz.Year:0000}{nowUserTz.Month:00}");
+
+            if (string.IsNullOrEmpty(dumped))
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+            }
+            else
+            {
+                await context.PostAsync($"{year}年{month}月のタイムカードです。");
+                await context.PostAsync(dumped);
+            }
+
+            return false;
         }
 
         private async Task<bool> CommandModityTimecardAsync(IDialogContext context, Command command)
@@ -310,7 +389,7 @@ namespace TimecardBot.Dialogs
             await Task.Delay(interval);
             await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたら私がアナタに「仕事はおわりましたか？」と聞きます。");
             await Task.Delay(interval);
-            await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間として記録します。");
+            await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間としてタイムカードに記録します。");
             await Task.Delay(interval);
             await context.PostAsync("「いいえ」と応える、または無視すると、私は３０分後に再び聞きます。");
             await Task.Delay(interval);

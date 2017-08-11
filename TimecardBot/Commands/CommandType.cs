@@ -23,12 +23,20 @@ namespace TimecardBot.Commands
         [Command("退会", "ユーザー削除", "unregist user", "unregist")]
         UnregistUser,
 
-        [AliasAttribute("日報のダウンロード")]
-        [Command("日報のダウンロード", "ダウンロード", "download")]
+        [AliasAttribute("タイムカードのダウンロード")]
+        [Command("タイムカードのダウンロード", "ダウンロード", "download")]
         DownloadTimecard,
 
-        [AliasAttribute("日報の編集")]
-        [Command("日報の編集", "編集", "edit")]
+        [AliasAttribute("今月のタイムカード")]
+        [Command("今月のタイムカード", "今月の日報")]
+        DownloadTimecardThisMonth,
+
+        [AliasAttribute("先月のタイムカード")]
+        [Command("先月のタイムカード", "先月の日報")]
+        DownloadTimecardPreviousMonth,
+
+        [AliasAttribute("タイムカードの編集")]
+        [Command("タイムカードの編集", "日報の編集", "edit")]
         ModityTimecard,
 
         [AliasAttribute("このボットについて")]

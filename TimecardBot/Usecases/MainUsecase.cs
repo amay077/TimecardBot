@@ -76,8 +76,33 @@ namespace TimecardBot.Usecases
         {
             int year = 0;
             int month = 0;
-            Util.ParseYYYYMM(yyyymm, out year, out month);
+
+            // ユーザーのタイムゾーンでの現在時刻
+            var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+            var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser);
+
+            if (yyyymm.Contains("今月"))
+            {
+                year = nowUserTz.Year;
+                month = nowUserTz.Month;
+            }
+            else if (yyyymm.Contains("先月"))
+            {
+                nowUserTz = nowUserTz.AddMonths(-1);
+                year = nowUserTz.Year;
+                month = nowUserTz.Month;
+            }
+            else
+            {
+                Util.ParseYYYYMM(yyyymm, out year, out month);
+            }
+
             var records = await _monthlyTimecardRepo.GetTimecardRecordByYearMonth(_currentUser.UserId, year, month);
+
+            if (records == null || records.Count == 0)
+            {
+                return string.Empty;
+            }
 
             var builder = new StringBuilder();
             builder.Append("日付, 終業時刻");
