@@ -15,6 +15,7 @@ namespace TimecardBot.Usecases
         private readonly User _currentUser;
         private readonly ConversationStateRepository _conversationStateRepo = new ConversationStateRepository();
         private readonly MonthlyTimecardRepository _monthlyTimecardRepo = new MonthlyTimecardRepository();
+        private readonly FeedbackRepository _feedbackRepo = new FeedbackRepository();
 
         public MainUsecase(User currentUser)
         {
@@ -63,6 +64,11 @@ namespace TimecardBot.Usecases
             // 今日はもう聞かないにして更新
             stateEntity.State = AskingState.DoNotAskToday;
             await _conversationStateRepo.UpsertState(stateEntity);
+        }
+
+        public async Task PostFeedback(string feedback)
+        {
+            await _feedbackRepo.AddFeedback(_currentUser.UserId, feedback);
         }
     }
 }

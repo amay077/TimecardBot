@@ -17,15 +17,14 @@ namespace TimecardBot.Dialogs
     [Serializable]
     public class MainDialog : IDialog<object>
     {
-        protected int count = 1;
         private User _currentUser;
 
         public async Task StartAsync(IDialogContext context)
         {
-            context.Wait(MessageReceivedAsync);
+            context.Wait(ReceivedMessageAsync);
         }
 
-        public async Task MessageReceivedAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
+        public async Task ReceivedMessageAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
         {
             var activity = await argument as Activity;
 
@@ -42,227 +41,228 @@ namespace TimecardBot.Dialogs
             Trace.WriteLine($"{_currentUser?.UserId ?? "unknown user"} posted '{message.Text}'.");
 
             var resolver = new CommandResolver();
-            var commandType = resolver.Resolve(message.Text);
-            Trace.WriteLine($"Resolved command is {commandType}");
-            //await context.PostAsync($"Resolved command is {commandType}");
+            var command = resolver.Resolve(message.Text);
+            Trace.WriteLine($"Resolved command is {command.Type} with {command.Message}");
 
-            await HandleCommandTypeAsync(context, commandType);
+            await CommandAsync(context, command);
         }
 
-        private async Task HandleCommandTypeAsync(IDialogContext context, CommandType commandType)
+        private async Task CommandAsync(IDialogContext context, Command command)
         {
-            switch (commandType)
+            var handleMessage = false;
+            switch (command.Type)
             {
-                case CommandType.None:
-                    break;
-                case CommandType.PunchTodayIsOff:
-                    break;
                 case CommandType.RegistUser:
-                    {
-                        if (_currentUser != null)
-                        {
-                            await context.PostAsync("あなたは既にユーザー登録されています。");
-                        }
-                        else
-                        {
-                            var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
-                            context.Call(dlg, RegistUserProcess);
-                            return;
-                        }
-                    }
+                    handleMessage = await CommandRegistUserAsync(context, command);
                     break;
                 case CommandType.UnregistUser:
+                    handleMessage = await CommandUnregistUserAsync(context, command);
                     break;
                 case CommandType.DownloadTimecard:
-                    {
-                        await context.PostAsync("タイムカードのダウンロードはただいま実装中です。");
-                    }
+                    handleMessage = await CommandDownloadTimecardAsync(context, command);
                     break;
                 case CommandType.ModityTimecard:
-                    {
-                        await context.PostAsync("タイムカードの編集はただいま実装中です。");
-                    }
+                    handleMessage = await CommandModityTimecardAsync(context, command);
                     break;
                 case CommandType.AboutThis:
-                    {
-                        var interval = 3000;
-                        await context.PostAsync("私は、終業時間を毎日EXCELに記録するのが面倒なアナタのためのボットです。");
-                        await Task.Delay(interval);
-                        await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたら私がアナタに「仕事はおわりましたか？」と聞きます。");
-                        await Task.Delay(interval);
-                        await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間として記録します。");
-                        await Task.Delay(interval);
-                        await context.PostAsync("「いいえ」と応える、または無視すると、私は３０分後に再び聞きます。");
-                        await Task.Delay(interval);
-                        await context.PostAsync("毎日私の問いに応えるだけで、月末には上司に提出するための日報ができています。ぜひ私に登録してみてください。");
-                    }
+                    handleMessage = await CommandAboutThisAsync(context, command);
                     break;
                 case CommandType.PostFeedback:
+                    handleMessage = await CommandPostFeedbackAsync(context, command);
                     break;
                 case CommandType.Menu:
-                    {
-                        PromptDialog.Choice<Command<CommandType>>(context, SubMenuProcessAsync,
-                            BuildMenus(), "タイムカードボットのメインメニューです。操作を選択して下さい。");
-                    }
+                    handleMessage = await CommandMenuAsync(context, command);
                     break;
                 case CommandType.Others:
-                    {
-                        PromptDialog.Choice(context, SubMenuProcessAsync,
-                            new Command<CommandType>[]
-                            {
-                            Command<CommandType>.Make(CommandType.PostFeedback),
-                            Command<CommandType>.Make(CommandType.UnregistUser),
-                            Command<CommandType>.Make(CommandType.Cancel)
-                            }, "その他の機能です。操作を選択して下さい。");
-                    }
+                    handleMessage = await CommandOthersAsync(context, command);
                     break;
                 case CommandType.Cancel:
+                    handleMessage = await CommandCommandAsync(context, command);
                     break;
                 case CommandType.EasterEggGanbaruzoi:
-                    {
-                        var usecase = new EasterEgg();
-                        await usecase.PostGanbaruzoi(context);
-                    }
+                    handleMessage = await CommandEasterEggGanbaruzoiAsync(context, command);
                     break;
+                case CommandType.PunchTodayIsOff:
+                    handleMessage = await CommandPunchTodayIsOffAsync(context, command);
+                    break;
+                case CommandType.AnswerToEoW:
+                    handleMessage = await CommandAnswerToEoWAsync(context, command);
+                    break;
+                case CommandType.AnswerToDoNotAskToday:
+                    handleMessage = await CommandAnswerToDoNotAskTodayAsync(context, command);
+                    break;
+                case CommandType.None:
                 default:
                     {
-                        var usecase = new MainUsecase(_currentUser);
-                        var stateEntity = await usecase.GetCurrentUserStatus();
+                        var text = (_currentUser == null) ?
+                            "初めての方は、 menu とタイプしてメニューを表示し、「ユーザー登録」を選択してください。" :
+                            "menu とタイプするとメニューを表示します。";
 
-                        // 「今日は休み」と言われたら、 AskingEoW でなくともその日は休日にする
-                        if (_currentUser != null && commandType == CommandType.PunchTodayIsOff)
-                        {
-                            // 今日を休みに更新
-                            await usecase.PunchTodayIsOff(stateEntity);
-                            await context.PostAsync($"今日はお休みなのですね、分かりました。今日はもう聞きません。よい休日をお過ごし下さい。");
-                        }
-                        // 終業かを問い合わせ中なら、
-                        // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
-                        else if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
-                        {
-                            if (commandType == CommandType.AnswerToEoW) // y:はい
-                            {
-                                // 聞かれた時刻で、終業時刻を更新
-                                var eowDateTime = await usecase.PunchEoW(stateEntity);
-                                await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
-                                    $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
-                            }
-                            else if (commandType == CommandType.AnswerToDoNotAskToday) // d:もう聞かないで
-                            {
-                                // 今日はもう聞かないにして更新
-                                await usecase.PunchDoNotAskToday(stateEntity);
-                                await context.PostAsync($"分かりました。今日はもう聞きません。");
-                            }
-                            else if (commandType == CommandType.AnswerToDoNotAskToday) // n:まだ
-                            {
-                                await context.PostAsync($"失礼しました。また３０分後に聞きます。");
-                            }
-                            else
-                            {
-                                await context.PostAsync($"認識できないコマンドです。 menu とタイプするとメニューを表示します。");
-                            }
-                        }
-                        else
-                        {
-                            var text = "";
-                            if (_currentUser == null)
-                            {
-                                text = "初めての方は、 menu とタイプしてメニューを表示し、「ユーザー登録」を選択してください。";
-                            }
-                            else
-                            {
-                                text = " menu とタイプするとメニューを表示します。";
-                            }
-
-                            await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。" + text);
-                        }
-
-                        context.Wait(MessageReceivedAsync);
+                        await context.PostAsync($"こんにちわ {_currentUser?.NickName ?? "ゲスト"} さん。" + text);
+                        handleMessage = false;
                     }
                     break;
             }
+
+            if (!handleMessage)
+            {
+                context.Wait(ReceivedMessageAsync);
+            }
         }
 
-        private IEnumerable<Command<CommandType>> BuildMenus()
+        private async Task<bool> CommandPostFeedbackAsync(IDialogContext context, Command command)
         {
-            var menus = new List<Command<CommandType>>();
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            var dlg = FormDialog.FromForm(FeedbackOrder.BuildForm, FormOptions.PromptInStart);
+            context.Call(dlg, ReceivePostFeedbackOrderAsync);
+
+            return true;
+        }
+
+        private async Task ReceivePostFeedbackOrderAsync(IDialogContext context, IAwaitable<FeedbackOrder> argument)
+        {
+            var order = await argument;
+            var usecase = new MainUsecase(_currentUser);
+            await usecase.PostFeedback(order.Body);
+
+            await context.PostAsync("送信しました、今後の改善のネタにします。ご意見ありがとうございます。");
+        }
+
+        private async Task<bool> CommandCommandAsync(IDialogContext context, Command command)
+        {
+            await context.PostAsync("メニューを閉じました。");
+            return false;
+        }
+
+        private async Task<bool> CommandAnswerToDoNotAskTodayAsync(IDialogContext context, Command command)
+        {
+            var usecase = new MainUsecase(_currentUser);
+            var stateEntity = await usecase.GetCurrentUserStatus();
+
+            // 終業かを問い合わせ中なら、
+            // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
+            if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
+            {
+                // 今日はもう聞かないにして更新
+                await usecase.PunchDoNotAskToday(stateEntity);
+                await context.PostAsync($"分かりました。今日はもう聞きません。");
+            }
+            else
+            {
+                await context.PostAsync($"今は仕事の終わりを聞いていません。");
+            }
+
+            return false;
+        }
+
+        private async Task<bool> CommandAnswerToEoWAsync(IDialogContext context, Command command)
+        {
+            var usecase = new MainUsecase(_currentUser);
+            var stateEntity = await usecase.GetCurrentUserStatus();
+
+            // 終業かを問い合わせ中なら、
+            // （y:終わった／n:終わってない／d:今日は徹夜）に応答する。
+            if ((stateEntity?.State ?? AskingState.None) == AskingState.AskingEoW)
+            {
+                // 聞かれた時刻で、終業時刻を更新
+                var eowDateTime = await usecase.PunchEoW(stateEntity);
+                await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
+                    $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
+            }
+            else
+            {
+                await context.PostAsync($"今は仕事の終わりを聞いていません。終業時刻を記録するには 日報の編集 とタイプして下さい。");
+            }
+
+            return false;
+        }
+
+        private async Task<bool> CommandPunchTodayIsOffAsync(IDialogContext context, Command command)
+        {
+            var usecase = new MainUsecase(_currentUser);
+            var stateEntity = await usecase.GetCurrentUserStatus();
+
+            // 「今日は休み」と言われたら、 AskingEoW でなくともその日は休日にする
+            if (_currentUser != null)
+            {
+                // 今日を休みに更新
+                await usecase.PunchTodayIsOff(stateEntity);
+                await context.PostAsync($"今日はお休みなのですね、分かりました。今日はもう聞きません。よい休日をお過ごし下さい。");
+            }
+            else
+            {
+                await context.PostAsync($"今は仕事の終わりを聞いていません。よい休日をお過ごし下さい。");
+            }
+
+            return false;
+        }
+
+        private async Task<bool> CommandEasterEggGanbaruzoiAsync(IDialogContext context, Command command)
+        {
+            var usecase = new EasterEgg();
+            await usecase.PostGanbaruzoi(context);
+            return false;
+        }
+
+        private async Task<bool> CommandOthersAsync(IDialogContext context, Command command)
+        {
+            PromptDialog.Choice(context, SubMenuProcessAsync,
+                new Command[]
+                {
+                    Command.Make(CommandType.PostFeedback),
+                    Command.Make(CommandType.UnregistUser),
+                    Command.Make(CommandType.Cancel)
+                }, "その他の機能です。操作を選択して下さい。");
+            return true;
+        }
+
+        private async Task<bool> CommandMenuAsync(IDialogContext context, Command command)
+        {
+            var menus = new List<Command>();
 
             if (_currentUser == null)
             {
                 // 未登録ユーザー
-                menus.Add(Command<CommandType>.Make(CommandType.RegistUser));
-                menus.Add(Command<CommandType>.Make(CommandType.AboutThis));
-                menus.Add(Command<CommandType>.Make(CommandType.Cancel));
+                menus.Add(Command.Make(CommandType.RegistUser));
+                menus.Add(Command.Make(CommandType.AboutThis));
+                menus.Add(Command.Make(CommandType.Cancel));
             }
             else
             {
                 // 登録済みユーザー
-                menus.Add(Command<CommandType>.Make(CommandType.DownloadTimecard));
-                menus.Add(Command<CommandType>.Make(CommandType.ModityTimecard));
-                menus.Add(Command<CommandType>.Make(CommandType.AboutThis));
-                menus.Add(Command<CommandType>.Make(CommandType.Others));
-                menus.Add(Command<CommandType>.Make(CommandType.Cancel));
+                menus.Add(Command.Make(CommandType.DownloadTimecard));
+                menus.Add(Command.Make(CommandType.ModityTimecard));
+                menus.Add(Command.Make(CommandType.AboutThis));
+                menus.Add(Command.Make(CommandType.Others));
+                menus.Add(Command.Make(CommandType.Cancel));
             }
 
-            return menus;
+            PromptDialog.Choice<Command>(context, SubMenuProcessAsync,
+                menus, "タイムカードボットのメインメニューです。操作を選択して下さい。");
+            return true;
         }
 
-        //public async Task MenuProcessAsync(IDialogContext context, IAwaitable<Menu<MenuType>> argument)
-        //{
-        //    var confirm = await argument;
+        private async Task<bool> CommandRegistUserAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser != null)
+            {
+                await context.PostAsync("あなたは既にユーザー登録されています。");
+                return false;
+            }
+            else
+            {
+                var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
+                context.Call(dlg, ReceivedRegistUserOrderAsync);
+                return true;
+            }
+        }
 
-        //    switch (confirm.Type)
-        //    {
-        //        case MenuType.RegistUser:
-        //            if (_currentUser != null)
-        //            {
-        //                await context.PostAsync("あなたは既にユーザー登録されています。");
-        //            }
-        //            else
-        //            {
-        //                var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
-        //                context.Call(dlg, RegistUserProcess);
-        //                return;
-        //            }
-        //            break;
-        //        case MenuType.DownloadTimecard:
-        //            await context.PostAsync("タイムカードのダウンロードはただいま実装中です。");
-        //            break;
-        //        case MenuType.ModityTimecard:
-        //            await context.PostAsync("タイムカードの編集はただいま実装中です。");
-        //            break;
-        //        case MenuType.AboutThis: // このボットについて
-        //            var interval = 3000;
-        //            await context.PostAsync("私は、終業時間を毎日EXCELに記録するのが面倒なアナタのためのボットです。");
-        //            await Task.Delay(interval);
-        //            await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたら私がアナタに「仕事はおわりましたか？」と聞きます。");
-        //            await Task.Delay(interval);
-        //            await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間として記録します。");
-        //            await Task.Delay(interval);
-        //            await context.PostAsync("「いいえ」と応える、または無視すると、私は３０分後に再び聞きます。");
-        //            await Task.Delay(interval);
-        //            await context.PostAsync("毎日私の問いに応えるだけで、月末には上司に提出するための日報ができています。ぜひ私に登録してみてください。");
-        //            break;
-        //        case MenuType.Others:
-        //            PromptDialog.Choice<Menu<SubMenuType>>(context, SubMenuProcessAsync,
-        //                new Menu<SubMenuType>[]
-        //                {
-        //                    Menu<SubMenuType>.Make(SubMenuType.PostFeedback),
-        //                    Menu<SubMenuType>.Make(SubMenuType.UnregistUser),
-        //                    Menu<SubMenuType>.Make(SubMenuType.Cancel)
-        //                }, "その他の機能です。操作を選択して下さい。");
-        //            return;
-        //        case MenuType.Cancel:
-        //            await context.PostAsync("メニューを閉じました。");
-        //            break;
-        //        default:
-        //            await context.PostAsync("無効なメニューが選択されました。");
-        //            break;
-        //    }
-        //    context.Wait(MessageReceivedAsync);
-        //}
-
-        private async Task RegistUserProcess(IDialogContext context, IAwaitable<RegistUserOrder> result)
+        private async Task ReceivedRegistUserOrderAsync(IDialogContext context, IAwaitable<RegistUserOrder> result)
         {
             var order = await result;
             var conversationRef = context.Activity.ToConversationReference();
@@ -273,58 +273,72 @@ namespace TimecardBot.Dialogs
 
             await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
 
-            context.Wait(MessageReceivedAsync);
+            context.Wait(ReceivedMessageAsync);
         }
 
-        public async Task SubMenuProcessAsync(IDialogContext context, IAwaitable<Command<CommandType>> argument)
+        private async Task<bool> CommandDownloadTimecardAsync(IDialogContext context, Command command)
         {
-            var commandType = (await argument).Type;
-            await HandleCommandTypeAsync(context, commandType);
-
-
-            //var choice = await argument;
-            //switch (choice.Type)
-            //{
-            //    case SubMenuType.UnregistUser:
-            //        if (_currentUser == null)
-            //        {
-            //            await context.PostAsync("ユーザー登録されていません。");
-            //        }
-            //        else
-            //        {
-            //            PromptDialog.Confirm(context, UnregistUserConfirmAsync, "ユーザーを削除してよいですか？");
-            //            return;
-            //        }
-            //        break;
-            //    case SubMenuType.PostFeedback:
-            //        await context.PostAsync("フィードバックの送信はただいま実装中です。");
-            //        break;
-            //    case SubMenuType.Cancel:
-            //        await context.PostAsync("メニューを閉じました。");
-            //        break;
-            //    default:
-            //        await context.PostAsync("無効なメニューが選択されました。");
-            //        break;
-            //}
-            //context.Wait(MessageReceivedAsync);
+            await context.PostAsync("タイムカードのダウンロードはただいま実装中です。");
+            return false;
         }
 
-        public async Task UnregistUserConfirmAsync(IDialogContext context, IAwaitable<bool> argument)
+        private async Task<bool> CommandModityTimecardAsync(IDialogContext context, Command command)
+        {
+            await context.PostAsync("タイムカードの編集はただいま実装中です。");
+            return false;
+        }
+
+        private async Task<bool> CommandAboutThisAsync(IDialogContext context, Command command)
+        {
+            var interval = 3000;
+            await context.PostAsync("私は、終業時間を毎日EXCELに記録するのが面倒なアナタのためのボットです。");
+            await Task.Delay(interval);
+            await context.PostAsync("ユーザー登録しておくと、終業時間を過ぎたら私がアナタに「仕事はおわりましたか？」と聞きます。");
+            await Task.Delay(interval);
+            await context.PostAsync("アナタが「はい」と応えたら、私はその時刻を終業時間として記録します。");
+            await Task.Delay(interval);
+            await context.PostAsync("「いいえ」と応える、または無視すると、私は３０分後に再び聞きます。");
+            await Task.Delay(interval);
+            await context.PostAsync("毎日私の問いに応えるだけで、月末には上司に提出するための日報ができています。ぜひ私に登録してみてください。");
+            return false;
+        }
+
+        public async Task SubMenuProcessAsync(IDialogContext context, IAwaitable<Command> argument)
+        {
+            var command = (await argument);
+            await CommandAsync(context, command);
+        }
+
+        public async Task<bool> CommandUnregistUserAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されていません。");
+                return false;
+            }
+            else
+            {
+                PromptDialog.Confirm(context, ReceivedUnregistUserAsync, "ユーザーを削除してよいですか？");
+                return true;
+            }
+        }
+
+        public async Task ReceivedUnregistUserAsync(IDialogContext context, IAwaitable<bool> argument)
         {
             var confirm = await argument;
             if (confirm)
             {
-                PromptDialog.Confirm(context, UnregistUserAsync, "退会すると記録されているデータが全て削除されます。本当に削除してよろしいですか？（これが最後の確認です）");
-                return;
+                PromptDialog.Confirm(context, ReceivedUnregistUserConfirmAsync, 
+                    "退会すると記録されているデータが全て削除されます。本当に削除してよろしいですか？（これが最後の確認です）");
             }
             else
             {
                 await context.PostAsync("ユーザー削除を中止しました。");
+                context.Wait(ReceivedMessageAsync);
             }
-            context.Wait(MessageReceivedAsync);
         }
 
-        public async Task UnregistUserAsync(IDialogContext context, IAwaitable<bool> argument)
+        public async Task ReceivedUnregistUserConfirmAsync(IDialogContext context, IAwaitable<bool> argument)
         {
             var confirm = await argument;
             if (confirm)
@@ -338,23 +352,7 @@ namespace TimecardBot.Dialogs
             {
                 await context.PostAsync("ユーザー削除を中止しました。");
             }
-            context.Wait(MessageReceivedAsync);
-        }
-
-        public async Task ResetCountAsync(IDialogContext context, IAwaitable<bool> argument)
-        {
-            var confirm = await argument;
-            if (confirm)
-            {
-                this.count = 1;
-                _currentUser = null;
-                await context.PostAsync("会話数をリセットしました。");
-            }
-            else
-            {
-                await context.PostAsync("会話数リセットを中止しました。");
-            }
-            context.Wait(MessageReceivedAsync);
+            context.Wait(ReceivedMessageAsync);
         }
     }
 }

@@ -20,7 +20,7 @@ namespace TimecardBot.Commands
         RegistUser,
 
         [AliasAttribute("退会")]
-        [Command("ユーザー退会", "unregist user", "unregist")]
+        [Command("退会", "ユーザー削除", "unregist user", "unregist")]
         UnregistUser,
 
         [AliasAttribute("日報のダウンロード")]

@@ -6,18 +6,26 @@ using System.Web;
 namespace TimecardBot.Commands
 {
     [Serializable]
-    public struct Command<E> where E : struct
+    public struct Command
     {
-        public E Type { get; set; }
+        public CommandType Type { get; }
+
+        public string Message { get; }
+
+        public Command(CommandType type, string message) : this()
+        {
+            Type = type;
+            Message = message;
+        }
 
         public override string ToString()
         {
             return Type.ToAlias();
         }
 
-        public static Command<E> Make(E type)
+        public static Command Make(CommandType type, string message = default(string))
         {
-            return new Command<E> { Type = type };
+            return new Command(type, message);
         }
     }
 }

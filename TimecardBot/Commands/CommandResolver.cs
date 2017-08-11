@@ -9,7 +9,7 @@ namespace TimecardBot.Commands
     {
         private static readonly Regex _regex = new Regex(@"[^0-9a-zA-Zあ-んア-ン]");
 
-        public CommandType Resolve(string text)
+        public Command Resolve(string text)
         {
             var commands = Enum.GetValues(typeof(CommandType));
             foreach (var cmd in commands)
@@ -19,11 +19,11 @@ namespace TimecardBot.Commands
                 var matched = Match(text, words);
                 if (matched)
                 {
-                    return cmdEnum;
+                    return new Command(cmdEnum, text);
                 }
             }
 
-            return CommandType.None;
+            return new Command(CommandType.None, text);
         }
 
         private static bool Match(string text, params string[] words)
