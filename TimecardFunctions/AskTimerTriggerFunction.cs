@@ -7,7 +7,7 @@ namespace TimecardFunctions
     public static class AskTimerTriggerFunction
     {
         [FunctionName("AskTimerTrigger")]
-        public static void Run([TimerTrigger("0 */30 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static void Run([TimerTrigger("0 3-33/30 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"C# Timer trigger function executed at: {DateTime.Now}");
 
