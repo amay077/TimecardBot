@@ -142,6 +142,7 @@
     <Compile Include="DataModels\DownloadTimecardOrder.cs" />
     <Compile Include="DataModels\EndOfWorkTimeType.cs" />
     <Compile Include="DataModels\FeedbackOrder.cs" />
+    <Compile Include="DataModels\ModifyTimecardOrder.cs" />
     <Compile Include="DataModels\RegistUserOrder.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
     <Compile Include="Dialogs\TestDialog.cs" />

@@ -67,8 +67,8 @@ namespace TimecardBot.Dialogs
                 case CommandType.DownloadTimecardPreviousMonth:
                     handleMessage = await CommandDownloadTimecardPreviousMonthAsync(context, command);
                     break;
-                case CommandType.ModityTimecard:
-                    handleMessage = await CommandModityTimecardAsync(context, command);
+                case CommandType.ModifyTimecard:
+                    handleMessage = await CommandModifyTimecardAsync(context, command);
                     break;
                 case CommandType.AboutThis:
                     handleMessage = await CommandAboutThisAsync(context, command);
@@ -242,7 +242,7 @@ namespace TimecardBot.Dialogs
             {
                 // 登録済みユーザー
                 menus.Add(Command.Make(CommandType.DownloadTimecard));
-                menus.Add(Command.Make(CommandType.ModityTimecard));
+                menus.Add(Command.Make(CommandType.ModifyTimecard));
                 menus.Add(Command.Make(CommandType.AboutThis));
                 menus.Add(Command.Make(CommandType.Others));
                 menus.Add(Command.Make(CommandType.Cancel));
@@ -376,10 +376,27 @@ namespace TimecardBot.Dialogs
             return false;
         }
 
-        private async Task<bool> CommandModityTimecardAsync(IDialogContext context, Command command)
+        private async Task<bool> CommandModifyTimecardAsync(IDialogContext context, Command command)
         {
-            await context.PostAsync("タイムカードの編集はただいま実装中です。");
-            return false;
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            var dlg = FormDialog.FromForm(ModifyTimecardOrder.BuildForm, FormOptions.PromptInStart);
+            context.Call(dlg, ReceiveModifyTimecardOrderAsync);
+
+            return true;
+        }
+
+        private async Task ReceiveModifyTimecardOrderAsync(IDialogContext context, IAwaitable<ModifyTimecardOrder> result)
+        {
+            var order = await result;
+
+            var usecase = new MainUsecase(_currentUser);
+            await usecase.ModifyTimecard(order.Date, order.EoWTime);
+            await context.PostAsync("タイムカードを変更しました。");
         }
 
         private async Task<bool> CommandAboutThisAsync(IDialogContext context, Command command)

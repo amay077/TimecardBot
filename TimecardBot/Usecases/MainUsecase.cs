@@ -116,5 +116,26 @@ namespace TimecardBot.Usecases
 
             return builder.ToString();
         }
+
+        public async Task ModifyTimecard(string yyyymmdd, string eoWTime)
+        {
+            int year = 0;
+            int month = 0;
+            int day = 0;
+            Util.ParseYYYYMMDD(yyyymmdd, out year, out month, out day);
+
+            if (eoWTime.Contains("なし"))
+            {
+                await _monthlyTimecardRepo.DeleteTimecardRecord(_currentUser.UserId, year, month, day);
+            }
+            else
+            {
+                int hour = 0;
+                int minute = 0;
+
+                Util.ParseHHMM(eoWTime, out hour, out minute);
+                await _monthlyTimecardRepo.UpsertTimecardRecord(_currentUser.UserId, year, month, day, hour, minute);
+            }
+        }
     }
 }

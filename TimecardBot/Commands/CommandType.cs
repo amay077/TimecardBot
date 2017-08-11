@@ -37,7 +37,7 @@ namespace TimecardBot.Commands
 
         [AliasAttribute("タイムカードの編集")]
         [Command("タイムカードの編集", "日報の編集", "edit")]
-        ModityTimecard,
+        ModifyTimecard,
 
         [AliasAttribute("このボットについて")]
         [Command("このボットについて", "説明", "about")]
@@ -48,7 +48,7 @@ namespace TimecardBot.Commands
         PostFeedback,
 
         [AliasAttribute("メニュー")]
-        [Command("メニュー", "menu")]
+        [Command("メニュー", "menu", "めにゅー")]
         Menu,
 
         [AliasAttribute("その他のメニュー")]
