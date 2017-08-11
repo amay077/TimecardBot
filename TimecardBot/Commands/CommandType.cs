@@ -59,6 +59,10 @@ namespace TimecardBot.Commands
         [Command("仕事終わった", "y", "yes", "ok", "はい")]
         AnswerToEoW,
 
+        [AliasAttribute("○時○分に仕事終わった")]
+        [Command("○時○分に仕事終わった")]
+        AnswerToEoWWithTime,
+
         [AliasAttribute("仕事終わってない")]
         [Command("仕事終わってない", "n", "no", "ng", "いいえ", "だめ")]
         AnswerToNotEoW,
@@ -70,7 +74,7 @@ namespace TimecardBot.Commands
         [AliasAttribute("閉じる")]
         Cancel, // キャンセル
 
-                    [AliasAttribute("今日も一日")]
+        [AliasAttribute("今日も一日")]
         [Command("今日も一日")]
         EasterEggGanbaruzoi
     }

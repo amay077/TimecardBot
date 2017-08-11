@@ -14,6 +14,7 @@ namespace TimecardBot.Usecases
     public sealed class MainUsecase
     {
         private readonly User _currentUser;
+
         private readonly ConversationStateRepository _conversationStateRepo = new ConversationStateRepository();
         private readonly MonthlyTimecardRepository _monthlyTimecardRepo = new MonthlyTimecardRepository();
         private readonly FeedbackRepository _feedbackRepo = new FeedbackRepository();
@@ -59,6 +60,37 @@ namespace TimecardBot.Usecases
 
             return ( year, month, day, eowHour, eowMinute );
         }
+
+        public async Task<(int year, int month, int day, int hour, int minute)> PunchEoW(string hhmm)
+        {
+            var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+            var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser); // ユーザーのタイムゾーンでの現在時刻
+
+            int hour = 0;
+            int minute = 0;
+            Util.ParseHHMM(hhmm, out hour, out minute);
+
+            await PunchEoW(nowUserTz.Year, nowUserTz.Month, nowUserTz.Day, hour, minute);
+            return (nowUserTz.Year, nowUserTz.Month, nowUserTz.Day, hour, minute);
+        }
+
+        public async Task PunchEoW(int year, int month, int day, int hour, int minute)
+        {
+            // 指定された日付の終業時刻を、指定された時刻で更新する
+            var monthlyTimecardRepo = new MonthlyTimecardRepository();
+            await monthlyTimecardRepo.UpsertTimecardRecord(_currentUser.UserId, year, month, day, hour, minute);
+
+            // 当日ならもう聞かないようにステータスを打刻済みに更新
+            var stateEntity = await _conversationStateRepo.GetStatusByUserId(_currentUser.UserId);
+            if (stateEntity != null && stateEntity.TargetDate.Equals($"{year:0000}/{month:00}/{day:00}"))
+            {
+                stateEntity.State = AskingState.Punched;
+                await _conversationStateRepo.UpsertState(stateEntity);
+            }
+
+            return;
+        }
+
 
         public async Task PunchDoNotAskToday(ConversationStateEntity stateEntity)
         {
@@ -124,17 +156,34 @@ namespace TimecardBot.Usecases
             int day = 0;
             Util.ParseYYYYMMDD(yyyymmdd, out year, out month, out day);
 
+            // なしと言われたら該当日のタイムカードを削除
             if (eoWTime.Contains("なし"))
             {
                 await _monthlyTimecardRepo.DeleteTimecardRecord(_currentUser.UserId, year, month, day);
+
+                // ユーザーのタイムゾーンでの現在時刻
+                var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
+                var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser);
+
+                // 削除日が今日だったら、また聞き始めるようにステータスを削除する
+                if (nowUserTz.Year == year && nowUserTz.Month == month && nowUserTz.Day == day)
+                {
+                    var stateEntity = await _conversationStateRepo.GetStatusByUserId(_currentUser.UserId);
+                    if (stateEntity != null)
+                    {
+                        stateEntity.State = AskingState.None;
+                        await _conversationStateRepo.UpsertState(stateEntity);
+                    }
+                }
             }
             else
             {
+                // 該当日のタイムカードを更新または追加
                 int hour = 0;
                 int minute = 0;
 
                 Util.ParseHHMM(eoWTime, out hour, out minute);
-                await _monthlyTimecardRepo.UpsertTimecardRecord(_currentUser.UserId, year, month, day, hour, minute);
+                await PunchEoW(year, month, day, hour, minute);
             }
         }
     }

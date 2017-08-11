@@ -94,6 +94,9 @@ namespace TimecardBot.Dialogs
                 case CommandType.AnswerToEoW:
                     handleMessage = await CommandAnswerToEoWAsync(context, command);
                     break;
+                case CommandType.AnswerToEoWWithTime:
+                    handleMessage = await CommandAnswerToEoWWithTimeAsync(context, command);
+                    break;
                 case CommandType.AnswerToDoNotAskToday:
                     handleMessage = await CommandAnswerToDoNotAskTodayAsync(context, command);
                     break;
@@ -147,6 +150,12 @@ namespace TimecardBot.Dialogs
 
         private async Task<bool> CommandAnswerToDoNotAskTodayAsync(IDialogContext context, Command command)
         {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
             var usecase = new MainUsecase(_currentUser);
             var stateEntity = await usecase.GetCurrentUserStatus();
 
@@ -168,6 +177,12 @@ namespace TimecardBot.Dialogs
 
         private async Task<bool> CommandAnswerToEoWAsync(IDialogContext context, Command command)
         {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
             var usecase = new MainUsecase(_currentUser);
             var stateEntity = await usecase.GetCurrentUserStatus();
 
@@ -188,8 +203,32 @@ namespace TimecardBot.Dialogs
             return false;
         }
 
+        private async Task<bool> CommandAnswerToEoWWithTimeAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            var usecase = new MainUsecase(_currentUser);
+
+            // 聞かれた時刻で、終業時刻を更新
+            var eowDateTime = await usecase.PunchEoW(command.Message);
+            await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
+                $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
+
+            return false;
+        }
+
         private async Task<bool> CommandPunchTodayIsOffAsync(IDialogContext context, Command command)
         {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
             var usecase = new MainUsecase(_currentUser);
             var stateEntity = await usecase.GetCurrentUserStatus();
 

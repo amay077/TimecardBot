@@ -65,6 +65,7 @@ namespace TimecardLogic.Repositories
             var upsertOp = TableOperation.InsertOrReplace(stateEntity);
             return _conversationStateTable.ExecuteAsync(upsertOp);
         }
+
         public Task UpsertState(ConversationStateEntity stateEntity)
         {
             // エンティティ作成

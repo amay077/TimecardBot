@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
+using TimecardLogic;
 
 namespace TimecardBot.Commands
 {
@@ -21,6 +22,14 @@ namespace TimecardBot.Commands
                 {
                     return new Command(cmdEnum, text);
                 }
+            }
+
+            // 時刻（hhmm）が入力されたら AnswerToEoW とする
+            int hour = 0;
+            int minute = 0;
+            if (Util.ParseHHMM(text, out hour, out minute))
+            {
+                return new Command(CommandType.AnswerToEoWWithTime, text);
             }
 
             return new Command(CommandType.None, text);

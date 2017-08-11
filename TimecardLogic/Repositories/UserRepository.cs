@@ -69,14 +69,7 @@ namespace TimecardLogic.Repositories
             return result;
         }
 
-
-
-        /// <summary>
-        /// ユーザーIDが既に存在するなら true
-        /// </summary>
-        /// <param name="userId"></param>
-        /// <returns></returns>
-        public Task<User> GetUserById(string userId)
+        public Task<UserEntity> GetUserEntityById(string userId)
         {
             // ユーザーIDが存在するかのクエリ
             var retrieveOperation = TableOperation.Retrieve<UserEntity>(
@@ -84,10 +77,22 @@ namespace TimecardLogic.Repositories
 
             // 検索実行
             return _usersTable.ExecuteAsync(retrieveOperation)
-                .ContinueWith(x => 
+                .ContinueWith(x =>
                 {
-                    return ((UserEntity)x?.Result?.Result)?.ToModel();
+                    return ((UserEntity)x?.Result?.Result);
                 });
+        }
+
+
+        /// <summary>
+        /// ユーザーIDが既に存在するなら true
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <returns></returns>
+        public async Task<User> GetUserById(string userId)
+        {
+            var userEntity = await GetUserEntityById(userId);
+            return userEntity.ToModel();
         }
 
         public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef,
