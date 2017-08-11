@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using TimecardLogic;
@@ -69,6 +70,26 @@ namespace TimecardBot.Usecases
         public async Task PostFeedback(string feedback)
         {
             await _feedbackRepo.AddFeedback(_currentUser.UserId, feedback);
+        }
+
+        public async Task<string> DumpTimecard(string yyyymm)
+        {
+            int year = 0;
+            int month = 0;
+            Util.ParseYYYYMM(yyyymm, out year, out month);
+            var records = await _monthlyTimecardRepo.GetTimecardRecordByYearMonth(_currentUser.UserId, year, month);
+
+            var builder = new StringBuilder();
+            builder.Append("日付, 終業時刻");
+            builder.AppendLine();
+
+            foreach (var rec in records)
+            {
+                builder.Append($"{rec.Day}, {rec.EoWTime}");
+                builder.AppendLine();
+            }
+
+            return builder.ToString();
         }
     }
 }

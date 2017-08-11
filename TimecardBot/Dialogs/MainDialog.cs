@@ -254,12 +254,10 @@ namespace TimecardBot.Dialogs
                 await context.PostAsync("あなたは既にユーザー登録されています。");
                 return false;
             }
-            else
-            {
-                var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
-                context.Call(dlg, ReceivedRegistUserOrderAsync);
-                return true;
-            }
+
+            var dlg = FormDialog.FromForm(RegistUserOrder.BuildForm, FormOptions.PromptInStart);
+            context.Call(dlg, ReceivedRegistUserOrderAsync);
+            return true;
         }
 
         private async Task ReceivedRegistUserOrderAsync(IDialogContext context, IAwaitable<RegistUserOrder> result)
@@ -278,8 +276,25 @@ namespace TimecardBot.Dialogs
 
         private async Task<bool> CommandDownloadTimecardAsync(IDialogContext context, Command command)
         {
-            await context.PostAsync("タイムカードのダウンロードはただいま実装中です。");
-            return false;
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            var dlg = FormDialog.FromForm(DownloadTimecardOrder.BuildForm, FormOptions.PromptInStart);
+            context.Call(dlg, ReceiveDownloadTimecardOrderAsync);
+
+            return true;
+        }
+
+        private async Task ReceiveDownloadTimecardOrderAsync(IDialogContext context, IAwaitable<DownloadTimecardOrder> result)
+        {
+            var order = await result;
+            var usecase = new MainUsecase(_currentUser);
+            var dumped = await usecase.DumpTimecard(order.YearMonth);
+
+            await context.PostAsync(dumped);
         }
 
         private async Task<bool> CommandModityTimecardAsync(IDialogContext context, Command command)
