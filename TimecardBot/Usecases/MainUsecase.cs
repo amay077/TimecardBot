@@ -106,12 +106,12 @@ namespace TimecardBot.Usecases
 
             var builder = new StringBuilder();
             builder.Append("日付, 終業時刻");
-            builder.AppendLine();
+            builder.Append("\n\n");
 
             foreach (var rec in records)
             {
                 builder.Append($"{rec.Day}, {rec.EoWTime}");
-                builder.AppendLine();
+                builder.Append("\n\n");
             }
 
             return builder.ToString();
