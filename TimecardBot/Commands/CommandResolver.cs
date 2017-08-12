@@ -12,27 +12,34 @@ namespace TimecardBot.Commands
 
         public Command Resolve(string text)
         {
-            var commands = Enum.GetValues(typeof(CommandType));
-            foreach (var cmd in commands)
+            try
             {
-                var cmdEnum = ((CommandType)cmd);
-                var words = cmdEnum.ToWords();
-                var matched = Match(text, words);
-                if (matched)
+                var commands = Enum.GetValues(typeof(CommandType));
+                foreach (var cmd in commands)
                 {
-                    return new Command(cmdEnum, text);
+                    var cmdEnum = ((CommandType)cmd);
+                    var words = cmdEnum.ToWords();
+                    var matched = Match(text, words);
+                    if (matched)
+                    {
+                        return new Command(cmdEnum, text);
+                    }
                 }
-            }
 
-            // 時刻（hhmm）が入力されたら AnswerToEoW とする
-            int hour = 0;
-            int minute = 0;
-            if (Util.ParseHHMM(text, out hour, out minute))
+                // 時刻（hhmm）が入力されたら AnswerToEoW とする
+                int hour = 0;
+                int minute = 0;
+                if (Util.ParseHHMM(text, out hour, out minute))
+                {
+                    return new Command(CommandType.AnswerToEoWWithTime, text);
+                }
+                return new Command(CommandType.None, text);
+            }
+            catch (Exception ex)
             {
-                return new Command(CommandType.AnswerToEoWWithTime, text);
+                Trace.WriteLine($"Resolve failed. text: {text} - {ex.Message}");
+                return new Command(CommandType.None, text);
             }
-
-            return new Command(CommandType.None, text);
         }
 
         private static bool Match(string text, params string[] words)

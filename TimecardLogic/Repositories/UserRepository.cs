@@ -92,7 +92,7 @@ namespace TimecardLogic.Repositories
         public async Task<User> GetUserById(string userId)
         {
             var userEntity = await GetUserEntityById(userId);
-            return userEntity.ToModel();
+            return userEntity?.ToModel();
         }
 
         public Task AddUser(string userId, string nickName, string askEndOfWorkStartTime, string askEndOfWorkEndTime, string timeZoneId, string conversationRef,

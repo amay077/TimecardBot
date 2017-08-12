@@ -26,25 +26,34 @@ namespace TimecardBot.Dialogs
 
         public async Task ReceivedMessageAsync(IDialogContext context, IAwaitable<IMessageActivity> argument)
         {
-            var activity = await argument as Activity;
-
-            // 現在の会話のユーザーIDを得る
-            if (_currentUser == null)
+            try
             {
-                var usecase = new UserUsecase();
-                var userId = await activity.GetFirstMember();
-                _currentUser = await usecase.GetUser(userId);
+                var activity = await argument as Activity;
+
+                // 現在の会話のユーザーIDを得る
+                if (_currentUser == null)
+                {
+                    var usecase = new UserUsecase();
+                    var userId = await activity.GetFirstMember();
+                    _currentUser = await usecase.GetUser(userId);
+                }
+
+                var message = await argument;
+
+                Trace.WriteLine($"{_currentUser?.UserId ?? "unknown user"} posted '{message.Text}'.");
+
+                var resolver = new CommandResolver();
+                var command = resolver.Resolve(message.Text);
+                Trace.WriteLine($"Resolved command is {command.Type} with {command.Message}");
+
+                await CommandAsync(context, command);
             }
-
-            var message = await argument;
-
-            Trace.WriteLine($"{_currentUser?.UserId ?? "unknown user"} posted '{message.Text}'.");
-
-            var resolver = new CommandResolver();
-            var command = resolver.Resolve(message.Text);
-            Trace.WriteLine($"Resolved command is {command.Type} with {command.Message}");
-
-            await CommandAsync(context, command);
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"ReceivedMessageAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"ReceivedMessageAsync failed - {ex.Message}");
+                context.Wait(ReceivedMessageAsync);
+            }
         }
 
         private async Task CommandAsync(IDialogContext context, Command command)
