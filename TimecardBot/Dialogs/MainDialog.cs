@@ -15,7 +15,7 @@ using System.Diagnostics;
 namespace TimecardBot.Dialogs
 {
     [Serializable]
-    public class MainDialog : IDialog<object>
+    public class MainDialog2 : IDialog<object>
     {
         private User _currentUser;
 
@@ -57,6 +57,9 @@ namespace TimecardBot.Dialogs
                     break;
                 case CommandType.UnregistUser:
                     handleMessage = await CommandUnregistUserAsync(context, command);
+                    break;
+                case CommandType.Preference:
+                    handleMessage = await CommandPreferenceAsync(context, command);
                     break;
                 case CommandType.DownloadTimecard:
                     handleMessage = await CommandDownloadTimecardAsync(context, command);
@@ -471,6 +474,42 @@ namespace TimecardBot.Dialogs
                 PromptDialog.Confirm(context, ReceivedUnregistUserAsync, "ユーザーを削除してよいですか？");
                 return true;
             }
+        }
+
+        private async Task<bool> CommandPreferenceAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            var usecase = new UserUsecase();
+
+            await context.PostAsync($"現在のユーザー設定は次のとおりです。\n\n--\n\n{_currentUser.ToDescribeString()}");
+
+            PromptDialog.Confirm(context, ReceivedPreferenceAsync, "変更しますか？");
+            return true;
+        }
+
+        private async Task ReceivedPreferenceAsync(IDialogContext context, IAwaitable<bool> result)
+        {
+            var confirm = await result;
+            if (confirm)
+            {
+                var dlg = FormDialog.FromForm(ChangeUserPreferenceOrder.BuildForm, FormOptions.PromptInStart);
+                context.Call(dlg, ReceiveChangeUserPreferenceOrderAsync);
+            }
+            else
+            {
+                await context.PostAsync("ユーザー設定の変更を中止しました。");
+            }
+        }
+
+        private async Task ReceiveChangeUserPreferenceOrderAsync(IDialogContext context, IAwaitable<ChangeUserPreferenceOrder> result)
+        {
+            var order = await result;
+            await context.PostAsync("ユーザー設定を変更しました。");
         }
 
         public async Task ReceivedUnregistUserAsync(IDialogContext context, IAwaitable<bool> argument)

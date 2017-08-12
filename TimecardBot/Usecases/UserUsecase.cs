@@ -18,8 +18,7 @@ namespace TimecardBot.Usecases
         public async Task<User> RegistUser(string userId, RegistUserOrder order, ConversationReference conversationRef)
         {
             // 有効な曜日群の抽出（例： 日火土→ 0101110）
-            var days = new[] { "日", "月", "火", "水", "木", "金", "土" };
-            var dayOfWeelEnables = days.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y) => x + y);
+            var dayOfWeelEnables = User.WEEKDAYS.Select(d => order.DayOfWeekEnables.Contains(d) ? "0" : "1").Aggregate((x, y) => x + y);
 
             // 休日群の抽出
             //var holidays = order.Holidays.Split(',', ' ')

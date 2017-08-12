@@ -23,6 +23,10 @@ namespace TimecardBot.Commands
         [Command("退会", "ユーザー削除", "unregist user", "unregist")]
         UnregistUser,
 
+        [AliasAttribute("ユーザー設定")]
+        [Command("ユーザー設定", "preference")]
+        Preference,
+
         [AliasAttribute("タイムカードのダウンロード")]
         [Command("タイムカードのダウンロード", "ダウンロード", "download")]
         DownloadTimecard,

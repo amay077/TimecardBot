@@ -17,6 +17,8 @@ namespace TimecardLogic.DataModels
     [Serializable]
     public class User
     {
+        public static string[] WEEKDAYS = new[] { "日", "月", "火", "水", "木", "金", "土" };
+
         public string UserId { get; } // getter がないと Table Storage に列が追加されなかった
 
         public string NickName { get; }
@@ -84,6 +86,25 @@ namespace TimecardLogic.DataModels
             return JsonConvert.SerializeObject(holidays.ToArray<string>());
         }
 
+        public string ToDescribeString()
+        {
+            var builder = new StringBuilder();
+
+            var offWeekDays = string.Join(string.Empty, WEEKDAYS.Zip(DayOfWeekEnables.ToCharArray(), (label, flag) => 
+            {
+                return flag.Equals('0') ? label : string.Empty;
+            }));
+
+            offWeekDays = string.IsNullOrEmpty(offWeekDays) ? "なし" : offWeekDays;
+
+            builder.Append($"ニックネーム: {NickName}\n\n");
+            builder.Append($"終業時刻（確認開始時刻）: {AskEndOfWorkStartTime}\n\n");
+            builder.Append($"確認終了時刻: {AskEndOfWorkEndTime}\n\n");
+            builder.Append($"休みの曜日: {offWeekDays}\n\n");
+            builder.Append($"タイムゾーン: {TimeZoneId}\n\n");
+
+            return builder.ToString();
+        }
 
     }
 }
