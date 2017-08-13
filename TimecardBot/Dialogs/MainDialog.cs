@@ -109,6 +109,9 @@ namespace TimecardBot.Dialogs
                 case CommandType.AnswerToEoWWithTime:
                     handleMessage = await CommandAnswerToEoWWithTimeAsync(context, command);
                     break;
+                case CommandType.AnswerToNotEoW:
+                    handleMessage = await CommandAnswerToAnswerToNotEoWAsync(context, command);
+                    break;
                 case CommandType.AnswerToDoNotAskToday:
                     handleMessage = await CommandAnswerToDoNotAskTodayAsync(context, command);
                     break;
@@ -230,6 +233,17 @@ namespace TimecardBot.Dialogs
             await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
                 $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
 
+            return false;
+        }
+        private async Task<bool> CommandAnswerToAnswerToNotEoWAsync(IDialogContext context, Command command)
+        {
+            if (_currentUser == null)
+            {
+                await context.PostAsync("ユーザー登録されている人のみ使える機能です。");
+                return false;
+            }
+
+            await context.PostAsync($"失礼しました、引き続きがんばってください、３０分後にまた聞きます。");
             return false;
         }
 
