@@ -76,6 +76,7 @@ namespace TimecardBot.Commands
         {
             var hankaku = Kana.ToHankaku(text);
             hankaku = hankaku
+                .Replace(Convert.ToChar(0x0A).ToString(), "")
                 .Replace("\0", "")
                 .Replace("\b", "")
                 .Replace("\n", "")

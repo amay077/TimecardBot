@@ -16,7 +16,7 @@ using System.Linq;
 namespace TimecardBot.Dialogs
 {
     [Serializable]
-    public class MainDialog2 : IDialog<object>
+    public class MainDialog : IDialog<object>
     {
         private User _currentUser;
 

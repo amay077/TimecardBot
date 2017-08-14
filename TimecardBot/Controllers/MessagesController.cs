@@ -24,7 +24,7 @@ namespace TimecardBot
             {
                 //await Conversation.SendAsync(activity, () => new TestDialog());
                 //await Conversation.SendAsync(activity, MakeRootDialog);
-                await Conversation.SendAsync(activity, () => new MainDialog2());
+                await Conversation.SendAsync(activity, () => new MainDialog());
             }
             else
             {
