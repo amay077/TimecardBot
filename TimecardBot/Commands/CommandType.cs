@@ -28,7 +28,7 @@ namespace TimecardBot.Commands
         Preference,
 
         [AliasAttribute("タイムカードのダウンロード")]
-        [Command("タイムカードのダウンロード", "ダウンロード", "download")]
+        [Command("タイムカードのダウンロード", "日報のダウンロード", "ダウンロード", "download")]
         DownloadTimecard,
 
         [AliasAttribute("今月のタイムカード")]

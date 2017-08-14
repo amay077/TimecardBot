@@ -45,14 +45,12 @@ namespace TimecardFunctions
                 {
                     Log($"ユーザー: {user.NickName}({user.UserId}) ---");
 
-                    int startHour, startMinute;
-                    int endHour, endMinute;
-                    Util.ParseHHMM(user.AskEndOfWorkStartTime, out startHour, out startMinute);
-                    Util.ParseHHMM(user.AskEndOfWorkEndTime, out endHour, out endMinute);
+                    var startHhmm = Util.ParseHHMM(user.AskEndOfWorkStartTime);
+                    var endHhmm = Util.ParseHHMM(user.AskEndOfWorkEndTime);
 
                     // 24時超過分をオフセットして比較する
                     // 19:00～26:00 の設定だった時に、翌日の深夜1時(25時)も送信対象となるように。
-                    var offsetHour = endHour - 23;
+                    var offsetHour = endHhmm.Hour - 23;
                     if (offsetHour < 0)
                     {
                         offsetHour = 0;
@@ -67,12 +65,12 @@ namespace TimecardFunctions
                     var nowStepedMinute = nowUserTz.Minute / 30 * 30;
                     Log($"ユーザータイムゾーンの現在時刻(オフセット前、丸め後): {nowHour}時{nowStepedMinute:00}分");
 
-                    var startTotalMinute = (startHour - offsetHour) * 60 + startMinute;
-                    var endTotalMinute = (endHour - offsetHour) * 60 + endMinute;
+                    var startTotalMinute = (startHhmm.Hour - offsetHour) * 60 + startHhmm.Minute;
+                    var endTotalMinute = (endHhmm.Hour - offsetHour) * 60 + endHhmm.Minute;
                     var nowTotalMinute = (nowHour - offsetHour) * 60 + nowStepedMinute;
                     Log($"ユーザータイムゾーンの現在時刻(オフセット後、丸め後): {(nowHour - offsetHour)}時{nowStepedMinute:00}分");
-                    Log($"判定時刻範囲（オフセット前）: {startHour}時{startMinute:00}分～{endHour}時{endMinute:00}分");
-                    Log($"判定時刻範囲（オフセット後）: {(startHour - offsetHour)}時{startMinute:00}分～{(endHour - offsetHour)}時{endMinute:00}分");
+                    Log($"判定時刻範囲（オフセット前）: {startHhmm.Hour}時{startHhmm.Minute:00}分～{endHhmm.Hour}時{endHhmm.Minute:00}分");
+                    Log($"判定時刻範囲（オフセット後）: {(startHhmm.Hour - offsetHour)}時{startHhmm.Minute:00}分～{(endHhmm.Hour - offsetHour)}時{endHhmm.Minute:00}分");
 
                     if (startTotalMinute >= endTotalMinute)
                     {
@@ -123,7 +121,7 @@ namespace TimecardFunctions
                         if (startTotalMinute > endTotalMinute)
                         {
                             conversationStateRepo.UpsertState(
-                                user.PartitionKey, user.UserId, AskingState.None, $"{endHour:00}{endMinute:00}",
+                                user.PartitionKey, user.UserId, AskingState.None, $"{endHhmm.Hour:00}{endHhmm.Minute:00}",
                                 nowUserTzDateText).RunAsSync();
                         }
 

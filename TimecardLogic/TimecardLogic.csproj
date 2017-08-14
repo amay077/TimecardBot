@@ -66,8 +66,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AskingState.cs" />
+    <Compile Include="DataModels\Hhmm.cs" />
     <Compile Include="DataModels\TimecardRecord.cs" />
     <Compile Include="DataModels\User.cs" />
+    <Compile Include="DataModels\Yyyymmdd.cs" />
     <Compile Include="Entities\ConversationStateEntity.cs" />
     <Compile Include="Entities\FeedbackEntity.cs" />
     <Compile Include="Entities\MonthlyTimecardEntity.cs" />

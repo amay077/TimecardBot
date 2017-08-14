@@ -3,24 +3,25 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using TimecardLogic.DataModels;
 
 namespace TimecardLogic
 {
     public static class Util
     {
-        public static bool ParseHHMM(string hhmm, out int hour, out int minute)
+        public static Hhmm ParseHHMM(string hhmm)
         {
-            hour = 0;
-            minute = 0;
+            int hour = 0;
+            int minute = 0;
 
             if (hhmm.Length != 4)
             {
-                return false;
+                return Hhmm.Empty;
             }
 
             hour = int.Parse(hhmm.Substring(0, 2));
             minute = int.Parse(hhmm.Substring(2));
-            return true;
+            return new Hhmm(hour, minute);
         }
 
         public static bool ParseYYYYMM(string yyyymm, out int year, out int month)
@@ -47,11 +48,11 @@ namespace TimecardLogic
             return true;
         }
 
-        public static bool ParseYYYYMMDD(string yyyymmdd, out int year, out int month, out int day)
+        public static Yyyymmdd ParseYYYYMMDD(string yyyymmdd)
         {
-            year = 0;
-            month = 0;
-            day = 0;
+            int year = 0;
+            int month = 0;
+            int day = 0;
 
             var buf = yyyymmdd.Split('/');
 
@@ -69,9 +70,9 @@ namespace TimecardLogic
             }
             else
             {
-                return false;
+                return Yyyymmdd.Empty;
             }
-            return true;
+            return new Yyyymmdd(year, month, day);
         }
 
     }

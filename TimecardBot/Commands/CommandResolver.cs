@@ -27,9 +27,8 @@ namespace TimecardBot.Commands
                 }
 
                 // 時刻（hhmm）が入力されたら AnswerToEoW とする
-                int hour = 0;
-                int minute = 0;
-                if (Util.ParseHHMM(text, out hour, out minute))
+                var hhmm = Util.ParseHHMM(text);
+                if (!hhmm.IsEmpty)
                 {
                     return new Command(CommandType.AnswerToEoWWithTime, text);
                 }

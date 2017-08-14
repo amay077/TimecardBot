@@ -207,8 +207,8 @@ namespace TimecardBot.Dialogs
             {
                 // 聞かれた時刻で、終業時刻を更新
                 var eowDateTime = await usecase.PunchEoW(stateEntity);
-                await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
-                    $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
+                await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.Month}月{eowDateTime.ymd.Day}日 の" +
+                    $"終業時刻は {eowDateTime.hm.Hour}時{eowDateTime.hm.Minute:00}分 を記録しました。");
             }
             else
             {
@@ -230,8 +230,8 @@ namespace TimecardBot.Dialogs
 
             // 聞かれた時刻で、終業時刻を更新
             var eowDateTime = await usecase.PunchEoW(command.Message);
-            await context.PostAsync($"お疲れさまでした。{eowDateTime.month}月{eowDateTime.day}日 の" +
-                $"終業時刻は {eowDateTime.hour}時{eowDateTime.minute:00}分 を記録しました。");
+            await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.Month}月{eowDateTime.ymd.Day}日 の" +
+                $"終業時刻は {eowDateTime.hm.Hour}時{eowDateTime.hm.Minute:00}分 を記録しました。");
 
             return false;
         }

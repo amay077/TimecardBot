@@ -61,15 +61,15 @@ namespace TimecardLogic.Repositories
         }
 
 
-        public async Task UpsertTimecardRecord(string userId, int year, int month, int day, int eoWTimeHour, int eoWTimeMinute)
+        public async Task UpsertTimecardRecord(string userId, Yyyymmdd ymd, Hhmm hm)
         {
             // 既存の月次タイムカードを得る
-            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, year, month);
+            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, ymd.Year, ymd.Month);
             IList<TimecardRecord> timecardRecords = new List<TimecardRecord>();
             if (monthlyTimecardEntity == null)
             {
                 // 得られなかったら新たに月次タイムカードを作る
-                monthlyTimecardEntity = new MonthlyTimecardEntity(_paritionKey, userId, $"{year:0000}{month:00}");
+                monthlyTimecardEntity = new MonthlyTimecardEntity(_paritionKey, userId, $"{ymd.Year:0000}{ymd.Month:00}");
             }
             else
             {
@@ -78,19 +78,19 @@ namespace TimecardLogic.Repositories
             }
 
             // 月次タイムカード内の各日のタイムカード群から該当日を検索する
-            var hit = timecardRecords.FirstOrDefault(x => x.Day == day);
+            var hit = timecardRecords.FirstOrDefault(x => x.Day == ymd.Day);
             if (hit != null)
             {
                 // 見つかればその終業時刻を書き換え
-                hit.EoWTime = $"{eoWTimeHour:00}{eoWTimeMinute:00}";
+                hit.EoWTime = $"{hm.Hour:00}{hm.Minute:00}";
             }
             else
             {
                 // 見つからなければ新たにタイムカードレコードを作って追加
                 var newRecord = new TimecardRecord()
                 {
-                    Day = day,
-                    EoWTime = $"{eoWTimeHour:00}{eoWTimeMinute:00}"
+                    Day = ymd.Day,
+                    EoWTime = $"{hm.Hour:00}{hm.Minute:00}"
                 };
                 timecardRecords.Add(newRecord);
             }
@@ -104,10 +104,10 @@ namespace TimecardLogic.Repositories
             await _monthlyTimecardTable.ExecuteAsync(upsertOp);
         }
 
-        public async Task DeleteTimecardRecord(string userId, int year, int month, int day)
+        public async Task DeleteTimecardRecord(string userId, Yyyymmdd ymd)
         {
             // 既存の月次タイムカードを得る
-            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, year, month);
+            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, ymd.Year, ymd.Month);
             IList<TimecardRecord> timecardRecords = new List<TimecardRecord>();
             if (monthlyTimecardEntity == null)
             {
@@ -121,7 +121,7 @@ namespace TimecardLogic.Repositories
             }
 
             // 月次タイムカード内の各日のタイムカード群から該当日を検索する
-            var hit = timecardRecords.FirstOrDefault(x => x.Day == day);
+            var hit = timecardRecords.FirstOrDefault(x => x.Day == ymd.Day);
             if (hit != null)
             {
                 // 見つかればそれをリストから削除

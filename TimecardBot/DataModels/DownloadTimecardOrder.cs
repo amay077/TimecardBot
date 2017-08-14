@@ -18,14 +18,14 @@ namespace TimecardBot.DataModels
             return new FormBuilder<DownloadTimecardOrder>()
                 .Message("指定した年月のタイムカードを表示します。")
                 .Field(nameof(YearMonth))
-                .Confirm(async order =>
-                {
-                    return new PromptAttribute(
-                        $"{order.YearMonth} のタイムカードをダウンロードします。\n\n" +
-                        "--\n\n" +
-                        "よろしいですか？ {||}");
-                })
-                .AddRemainingFields()
+                //.Confirm(async order =>
+                //{
+                //    return new PromptAttribute(
+                //        $"{order.YearMonth} のタイムカードをダウンロードします。\n\n" +
+                //        "--\n\n" +
+                //        "よろしいですか？ {||}");
+                //})
+                //.AddRemainingFields()
                 .Build();
         }
 
