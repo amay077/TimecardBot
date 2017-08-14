@@ -130,5 +130,11 @@ namespace TimecardLogic.Repositories
             // Execute the insert operation.
             await _usersTable.ExecuteAsync(TableOperation.Delete(user));
         }
+
+        public Task UpdateUser(UserEntity userEntity)
+        {
+            var upsertOp = TableOperation.InsertOrReplace(userEntity);
+            return _usersTable.ExecuteAsync(upsertOp);
+        }
     }
 }

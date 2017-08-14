@@ -146,8 +146,10 @@
     <Compile Include="DataModels\FormUtil.cs" />
     <Compile Include="DataModels\ModifyTimecardOrder.cs" />
     <Compile Include="DataModels\RegistUserOrder.cs" />
+    <Compile Include="DataModels\UserPreferenceType.cs" />
     <Compile Include="Dialogs\MainDialog.cs" />
     <Compile Include="Dialogs\TestDialog.cs" />
+    <Compile Include="Dialogs\UserPreferenceDialog.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>

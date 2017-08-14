@@ -47,5 +47,39 @@ namespace TimecardBot.Usecases
         {
             await _userRepo.DeleteUser(currentUser.UserId);
         }
+
+        public async Task<User> Update(User user, UserPreferenceType prefType, string text)
+        {
+            var userEntity = await _userRepo.GetUserEntityById(user.UserId);
+
+            switch (prefType)
+            {
+                case UserPreferenceType.NickName:
+                    userEntity.NickName = text;
+                    break;
+                case UserPreferenceType.EndOfWorkTime:
+                    userEntity.AskEndOfWorkStartTime = text;
+                    break;
+                case UserPreferenceType.EndOfConfirmTime:
+                    userEntity.AskEndOfWorkEndTime = text;
+                    break;
+                case UserPreferenceType.DayOfWeekEnables:
+                    {
+                        // 有効な曜日群の抽出（例： 日火土→ 0101110）
+                        var dayOfWeelEnables = User.WEEKDAYS.Select(d => text.Contains(d) ? "0" : "1").Aggregate((x, y) => x + y);
+                        userEntity.DayOfWeekEnables = dayOfWeelEnables;
+                    }
+                    break;
+                case UserPreferenceType.TimeZoneId:
+                    userEntity.TimeZoneId = text;
+                    break;
+                case UserPreferenceType.Cancel:
+                default:
+                    return user;
+            }
+
+            await _userRepo.UpdateUser(userEntity);
+            return userEntity.ToModel();
+        }
     }
 }

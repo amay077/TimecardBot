@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 namespace TimecardLogic.DataModels
 {
+    [Serializable]
     public struct Hhmm
     {
         internal static readonly Hhmm Empty = new Hhmm(0, 0);

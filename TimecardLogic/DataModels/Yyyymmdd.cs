@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 
 namespace TimecardLogic.DataModels
 {
+    [Serializable]
+
     public struct Yyyymmdd
     {
         public int Year { get; }

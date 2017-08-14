@@ -75,7 +75,8 @@ namespace TimecardBot.Commands
         [Command("今日はもう聞かないで", "d")]
         AnswerToDoNotAskToday,
 
-        [AliasAttribute("閉じる")]
+        [AliasAttribute("中止")]
+        [Command("中止", "キャンセル", "閉じる", "やめる", "cancel", "quit", "exit")]
         Cancel, // キャンセル
 
         [AliasAttribute("今日も一日")]

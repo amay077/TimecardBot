@@ -290,6 +290,7 @@ namespace TimecardBot.Dialogs
             PromptDialog.Choice(context, SubMenuProcessAsync,
                 new Command[]
                 {
+                    Command.Make(CommandType.Preference),
                     Command.Make(CommandType.PostFeedback),
                     Command.Make(CommandType.UnregistUser),
                     Command.Make(CommandType.Cancel)
@@ -534,48 +535,27 @@ namespace TimecardBot.Dialogs
                 return false;
             }
 
-            var usecase = new UserUsecase();
-
-            await context.PostAsync($"現在のユーザー設定は次のとおりです。\n\n--\n\n{_currentUser.ToDescribeString()}");
-
-            PromptDialog.Confirm(context, ReceivedPreferenceAsync, "変更しますか？");
+            var dlg = new UserPreferenceDialog(_currentUser);
+            context.Call(dlg, ReceivedCommandPreferenceAsync);
             return true;
         }
 
-        private async Task ReceivedPreferenceAsync(IDialogContext context, IAwaitable<bool> result)
+        private async Task ReceivedCommandPreferenceAsync(IDialogContext context, IAwaitable<UserPreferenceDialog.Result> result)
         {
             try
             {
-                var confirm = await result;
-                if (confirm)
-                {
-                    var dlg = FormDialog.FromForm(ChangeUserPreferenceOrder.BuildForm, FormOptions.PromptInStart);
-                    context.Call(dlg, ReceiveChangeUserPreferenceOrderAsync);
-                }
-                else
-                {
-                    await context.PostAsync("ユーザー設定の変更を中止しました。");
-                }
-            }
-            catch (Exception ex)
-            {
-                Trace.WriteLine($"ReceivedUnregistUserAsync failed - {ex.Message} - {ex.StackTrace}");
-                await context.PostAsync($"中止しました。");
-            }
-        }
+                var prefResult = await result;
 
-        private async Task ReceiveChangeUserPreferenceOrderAsync(IDialogContext context, IAwaitable<ChangeUserPreferenceOrder> result)
-        {
-            try
-            {
-                var order = await result;
-                await context.PostAsync("ユーザー設定を変更しました。");
+                var usecase = new UserUsecase();
+                _currentUser = await usecase.Update(_currentUser, prefResult.PrefType, prefResult.Text);
+                await context.PostAsync($"{prefResult.PrefType.ToAlias()}を変更しました。");
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"ReceivedUnregistUserAsync failed - {ex.Message} - {ex.StackTrace}");
+                Trace.WriteLine($"ReceivedCommandPreferenceAsync2 failed - {ex.Message} - {ex.StackTrace}");
                 await context.PostAsync($"中止しました。");
             }
+            context.Wait(ReceivedMessageAsync);
         }
 
         public async Task ReceivedUnregistUserAsync(IDialogContext context, IAwaitable<bool> argument)

@@ -24,13 +24,13 @@ namespace TimecardLogic.DataModels
         public string NickName { get; }
 
         // 終業したか聞き始める時刻(HHMM)
-        public string AskEndOfWorkStartTime { get;  }
+        public string AskEndOfWorkStartTime { get; }
 
         // 終業したか聞き終わる時刻(HHMM)
-        public string AskEndOfWorkEndTime { get;  }
+        public string AskEndOfWorkEndTime { get; }
 
         // タイムゾーン
-        public string TimeZoneId { get;  }
+        public string TimeZoneId { get; }
 
         // Json化された Conversation
         public string ConversationRef { get; }
@@ -104,6 +104,37 @@ namespace TimecardLogic.DataModels
             builder.Append($"タイムゾーン: {TimeZoneId}\n\n");
 
             return builder.ToString();
+        }
+
+        public string FormattedAskEndOfWorkStartTime
+        {
+            get
+            {
+                return Hhmm.Parse(AskEndOfWorkStartTime).Format();
+            }
+        }
+
+        public string FormattedAskEndOfWorkEndTime
+        {
+            get
+            {
+                return Hhmm.Parse(AskEndOfWorkEndTime).Format();
+            }
+        }
+
+        public string OffWeekDayLabels
+        {
+            get
+            {
+                var offWeekDays = string.Join(string.Empty, WEEKDAYS.Zip(DayOfWeekEnables.ToCharArray(), (label, flag) =>
+                {
+                    return flag.Equals('0') ? label : string.Empty;
+                }));
+
+                offWeekDays = string.IsNullOrEmpty(offWeekDays) ? "なし" : offWeekDays;
+
+                return offWeekDays;
+            }
         }
 
     }
