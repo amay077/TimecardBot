@@ -25,12 +25,69 @@ namespace TimecardLogic.DataModels
             return new Yyyymmdd(dateTime.Year, dateTime.Month, dateTime.Day);
         }
 
+        public static Yyyymmdd Parse(string yyyymmdd, string timeZoneId)
+        {
+            int year = 0;
+            int month = 0;
+            int day = 0;
+
+            if ("今日".Equals(yyyymmdd))
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                return Yyyymmdd.FromDate(nowTz);            
+            }
+            else if ("昨日".Equals(yyyymmdd))
+            {
+                var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                return Yyyymmdd.FromDate(nowTz.AddDays(-1));
+            }
+
+            var buf = yyyymmdd.Split('/');
+
+            if (buf?.Length == 3)
+            {
+                year = int.Parse(buf[0]);
+                month = int.Parse(buf[1]);
+                day = int.Parse(buf[2]);
+            }
+            else if (yyyymmdd.Length >= 8)
+            {
+                year = int.Parse(yyyymmdd.Substring(0, 4));
+                month = int.Parse(yyyymmdd.Substring(4, 2));
+                day = int.Parse(yyyymmdd.Substring(6, 2));
+            }
+            else
+            {
+                return Yyyymmdd.Empty;
+            }
+            return new Yyyymmdd(year, month, day);
+        }
+
+
         public bool isEmpty
         {
             get
             {
                 return Year == 0 && Month == 0 && Day == 0;
             }
+        }
+
+        public override bool Equals(object obj)
+        {
+            var ymd = obj as Yyyymmdd?;
+            if (!ymd.HasValue)
+            {
+                return false;
+            }
+
+            return Year == ymd.Value.Year && Month == ymd.Value.Month && Day == ymd.Value.Day;
+        }
+
+        public string FormatMd()
+        {
+            return $"{Month}月{Day}日";
         }
     }
 }

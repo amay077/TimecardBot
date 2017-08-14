@@ -25,5 +25,24 @@ namespace TimecardLogic.DataModels
             this.Minute = minute;
         }
 
+        public static Hhmm Parse(string hhmm)
+        {
+            int hour = 0;
+            int minute = 0;
+
+            if (hhmm.Length != 4)
+            {
+                return Hhmm.Empty;
+            }
+
+            hour = int.Parse(hhmm.Substring(0, 2));
+            minute = int.Parse(hhmm.Substring(2));
+            return new Hhmm(hour, minute);
+        }
+
+        public string Format()
+        {
+            return $"{Hour}時{Minute:00}分";
+        }
     }
 }

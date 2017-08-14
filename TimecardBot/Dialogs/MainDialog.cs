@@ -207,8 +207,8 @@ namespace TimecardBot.Dialogs
             {
                 // 聞かれた時刻で、終業時刻を更新
                 var eowDateTime = await usecase.PunchEoW(stateEntity);
-                await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.Month}月{eowDateTime.ymd.Day}日 の" +
-                    $"終業時刻は {eowDateTime.hm.Hour}時{eowDateTime.hm.Minute:00}分 を記録しました。");
+                await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.FormatMd()} の" +
+                    $"終業時刻は {eowDateTime.hm.Format()} を記録しました。");
             }
             else
             {
@@ -230,8 +230,8 @@ namespace TimecardBot.Dialogs
 
             // 聞かれた時刻で、終業時刻を更新
             var eowDateTime = await usecase.PunchEoW(command.Message);
-            await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.Month}月{eowDateTime.ymd.Day}日 の" +
-                $"終業時刻は {eowDateTime.hm.Hour}時{eowDateTime.hm.Minute:00}分 を記録しました。");
+            await context.PostAsync($"お疲れさまでした。{eowDateTime.ymd.FormatMd()} の" +
+                $"終業時刻は {eowDateTime.hm.Format()} を記録しました。");
 
             return false;
         }
@@ -363,20 +363,16 @@ namespace TimecardBot.Dialogs
         {
             var order = await result;
             var usecase = new MainUsecase(_currentUser);
-            var dumped = await usecase.DumpTimecard(order.YearMonth);
+            var res = await usecase.DumpTimecard(order.YearMonth);
 
-            int year = 0;
-            int month = 0;
-            Util.ParseYYYYMM(order.YearMonth, out year, out month);
-
-            if (string.IsNullOrEmpty(dumped))
+            if (string.IsNullOrEmpty(res.csv))
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+                await context.PostAsync($"{res.ym.Format()} のタイムカードはデータがありません。");
             }
             else
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードです。");
-                await context.PostAsync(dumped);
+                await context.PostAsync($"{res.ym.Format()} のタイムカードです。");
+                await context.PostAsync(res.csv);
             }
         }
 
@@ -391,19 +387,18 @@ namespace TimecardBot.Dialogs
             // ユーザーのタイムゾーンでの現在時刻
             var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
             var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser);
+            var ym = Yyyymm.FromDate(nowUserTz);
 
-            int year = nowUserTz.Year;
-            int month = nowUserTz.Month;
             var usecase = new MainUsecase(_currentUser);
-            var dumped = await usecase.DumpTimecard($"{nowUserTz.Year:0000}{nowUserTz.Month:00}");
+            var dumped = await usecase.DumpTimecard(ym);
 
             if (string.IsNullOrEmpty(dumped))
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+                await context.PostAsync($"{ym.Format()} のタイムカードはデータがありません。");
             }
             else
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードです。");
+                await context.PostAsync($"{ym.Format()} のタイムカードです。");
                 await context.PostAsync(dumped);
             }
 
@@ -422,19 +417,18 @@ namespace TimecardBot.Dialogs
             // ユーザーのタイムゾーンでの現在時刻
             var tzUser = TimeZoneInfo.FindSystemTimeZoneById(_currentUser.TimeZoneId);
             var nowUserTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tzUser).AddMonths(-1); // 先月
+            var ym = Yyyymm.FromDate(nowUserTz.AddMonths(-1));
 
-            int year = nowUserTz.Year;
-            int month = nowUserTz.Month;
             var usecase = new MainUsecase(_currentUser);
-            var dumped = await usecase.DumpTimecard($"{nowUserTz.Year:0000}{nowUserTz.Month:00}");
+            var dumped = await usecase.DumpTimecard(ym);
 
             if (string.IsNullOrEmpty(dumped))
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードはデータがありません。");
+                await context.PostAsync($"{ym.Format()}bのタイムカードはデータがありません。");
             }
             else
             {
-                await context.PostAsync($"{year}年{month}月のタイムカードです。");
+                await context.PostAsync($"{ym.Format()} のタイムカードです。");
                 await context.PostAsync(dumped);
             }
 

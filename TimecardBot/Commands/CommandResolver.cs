@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using TimecardLogic;
+using TimecardLogic.DataModels;
 
 namespace TimecardBot.Commands
 {
@@ -27,7 +28,7 @@ namespace TimecardBot.Commands
                 }
 
                 // 時刻（hhmm）が入力されたら AnswerToEoW とする
-                var hhmm = Util.ParseHHMM(text);
+                var hhmm = Hhmm.Parse(text);
                 if (!hhmm.IsEmpty)
                 {
                     return new Command(CommandType.AnswerToEoWWithTime, text);

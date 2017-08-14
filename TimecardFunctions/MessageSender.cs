@@ -45,8 +45,8 @@ namespace TimecardFunctions
                 {
                     Log($"ユーザー: {user.NickName}({user.UserId}) ---");
 
-                    var startHhmm = Util.ParseHHMM(user.AskEndOfWorkStartTime);
-                    var endHhmm = Util.ParseHHMM(user.AskEndOfWorkEndTime);
+                    var startHhmm = Hhmm.Parse(user.AskEndOfWorkStartTime);
+                    var endHhmm = Hhmm.Parse(user.AskEndOfWorkEndTime);
 
                     // 24時超過分をオフセットして比較する
                     // 19:00～26:00 の設定だった時に、翌日の深夜1時(25時)も送信対象となるように。

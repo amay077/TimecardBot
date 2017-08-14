@@ -48,10 +48,10 @@ namespace TimecardLogic.Repositories
             }
         }
 
-        public async Task<IList<TimecardRecord>> GetTimecardRecordByYearMonth(string userId, int year, int month)
+        public async Task<IList<TimecardRecord>> GetTimecardRecordByYearMonth(string userId, Yyyymm ym)
         {
             IList<TimecardRecord> timecardRecords = new List<TimecardRecord>();
-            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, year, month);
+            var monthlyTimecardEntity = await GetMonthlyTimecardsByYearMonth(userId, ym.Year, ym.Month);
 
             if (monthlyTimecardEntity != null)
             {
