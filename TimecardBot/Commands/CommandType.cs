@@ -60,7 +60,7 @@ namespace TimecardBot.Commands
         Others,
 
         [AliasAttribute("仕事終わった")]
-        [Command("仕事終わった", "y", "yes", "ok", "はい")]
+        [Command("仕事終わった", "y", "yes", "ok", "はい", "+1")]
         AnswerToEoW,
 
         [AliasAttribute("○時○分に仕事終わった")]
@@ -68,7 +68,7 @@ namespace TimecardBot.Commands
         AnswerToEoWWithTime,
 
         [AliasAttribute("仕事終わってない")]
-        [Command("仕事終わってない", "n", "no", "ng", "いいえ", "だめ")]
+        [Command("仕事終わってない", "n", "no", "ng", "いいえ", "だめ", "-1")]
         AnswerToNotEoW,
 
         [AliasAttribute("今日はもう聞かないで")]

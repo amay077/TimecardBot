@@ -1,5 +1,7 @@
-﻿using System;
+﻿using CSharp.Japanese.Kanaxs;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -37,23 +39,33 @@ namespace TimecardLogic.DataModels
             int year = 0;
             int month = 0;
 
-            var buf = yyyymm.Split('/');
+            var hankaku = Kana.ToHankaku(yyyymm);
+            var buf = hankaku.Split('/', '-', '年', '月', '日');
 
-            if (buf?.Length == 2)
+            try
             {
-                year = int.Parse(buf[0]);
-                month = int.Parse(buf[1]);
+                if (buf?.Length == 2 || buf?.Length == 3)
+                {
+                    year = int.Parse(buf[0]);
+                    month = int.Parse(buf[1]);
+                }
+                else if (hankaku.Length >= 4)
+                {
+                    year = int.Parse(hankaku.Substring(0, 4));
+                    month = int.Parse(hankaku.Substring(4, 2));
+                }
+                else
+                {
+                    Trace.WriteLine($"Yyyymm parse invalid length - {yyyymm}");
+                    return Yyyymm.Empty;
+                }
+                return new Yyyymm(year, month);
             }
-            else if (yyyymm.Length >= 4)
+            catch (Exception)
             {
-                year = int.Parse(yyyymm.Substring(0, 4));
-                month = int.Parse(yyyymm.Substring(4, 2));
-            }
-            else
-            {
+                Trace.WriteLine($"Yyyymm parse failed - {yyyymm}");
                 return Yyyymm.Empty;
             }
-            return new Yyyymm(year, month);
         }
 
         public static Yyyymm FromDate(DateTime dateTime)

@@ -11,6 +11,7 @@ using TimecardBot.DataModels;
 using TimecardBot.Usecases;
 using TimecardBot.Commands;
 using System.Diagnostics;
+using System.Linq;
 
 namespace TimecardBot.Dialogs
 {
@@ -180,7 +181,8 @@ namespace TimecardBot.Dialogs
             {
                 // 今日はもう聞かないにして更新
                 await usecase.PunchDoNotAskToday(stateEntity);
-                await context.PostAsync($"分かりました。今日はもう聞きません。");
+                var ymd = Yyyymmdd.Parse(stateEntity.TargetDate, _currentUser.TimeZoneId);
+                await context.PostAsync($"分かりました。今日({ymd.FormatMd()})はもう聞きません。");
             }
             else
             {
@@ -259,11 +261,14 @@ namespace TimecardBot.Dialogs
             var stateEntity = await usecase.GetCurrentUserStatus();
 
             // 「今日は休み」と言われたら、 AskingEoW でなくともその日は休日にする
-            if (_currentUser != null)
+            if (_currentUser != null && stateEntity != null)
             {
                 // 今日を休みに更新
                 await usecase.PunchTodayIsOff(stateEntity);
-                await context.PostAsync($"今日はお休みなのですね、分かりました。今日はもう聞きません。よい休日をお過ごし下さい。");
+
+                var ymd = Yyyymmdd.Parse(stateEntity.TargetDate, _currentUser.TimeZoneId);
+                await context.PostAsync($"今日はお休みなのですね、分かりました。" +
+                    $"今日({ymd.FormatMd()})はもう聞きません。よい休日をお過ごし下さい。");
             }
             else
             {
@@ -333,16 +338,24 @@ namespace TimecardBot.Dialogs
 
         private async Task ReceivedRegistUserOrderAsync(IDialogContext context, IAwaitable<RegistUserOrder> result)
         {
-            var order = await result;
-            var conversationRef = context.Activity.ToConversationReference();
-            var userId = await (context.Activity as Activity).GetFirstMember();
+            try
+            {
+                var order = await result;
+                var conversationRef = context.Activity.ToConversationReference();
+                var userId = await (context.Activity as Activity).GetFirstMember();
 
-            var usecase = new UserUsecase();
-            _currentUser = await usecase.RegistUser(userId, order, conversationRef);
+                var usecase = new UserUsecase();
+                _currentUser = await usecase.RegistUser(userId, order, conversationRef);
 
-            await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
+                await context.PostAsync($"ユーザーを登録しました。\n\nこれから毎日、{order.EndOfWorkTime}になったら仕事が終わったかを聞きますので、よろしくお願いします。");
 
-            context.Wait(ReceivedMessageAsync);
+                context.Wait(ReceivedMessageAsync);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"ReceivedRegistUserOrderAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
+            }
         }
 
         private async Task<bool> CommandDownloadTimecardAsync(IDialogContext context, Command command)
@@ -361,18 +374,30 @@ namespace TimecardBot.Dialogs
 
         private async Task ReceiveDownloadTimecardOrderAsync(IDialogContext context, IAwaitable<DownloadTimecardOrder> result)
         {
-            var order = await result;
-            var usecase = new MainUsecase(_currentUser);
-            var res = await usecase.DumpTimecard(order.YearMonth);
+            try
+            {
+                var order = await result;
+                var usecase = new MainUsecase(_currentUser);
+                var res = await usecase.DumpTimecard(order.YearMonth);
 
-            if (string.IsNullOrEmpty(res.csv))
-            {
-                await context.PostAsync($"{res.ym.Format()} のタイムカードはデータがありません。");
+                if (res.ym.IsEmpty)
+                {
+                    await context.PostAsync($"年月が正しくありません。YYYYMM もしくは今月、先月と指定して下さい。");
+                }
+                else if (string.IsNullOrEmpty(res.csv))
+                {
+                    await context.PostAsync($"{res.ym.Format()} のタイムカードはデータがありません。");
+                }
+                else
+                {
+                    await context.PostAsync($"{res.ym.Format()} のタイムカードです。");
+                    await context.PostAsync(res.csv);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await context.PostAsync($"{res.ym.Format()} のタイムカードです。");
-                await context.PostAsync(res.csv);
+                Trace.WriteLine($"ReceiveDownloadTimecardOrderAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
             }
         }
 
@@ -451,11 +476,19 @@ namespace TimecardBot.Dialogs
 
         private async Task ReceiveModifyTimecardOrderAsync(IDialogContext context, IAwaitable<ModifyTimecardOrder> result)
         {
-            var order = await result;
+            try
+            {
+                var order = await result;
 
-            var usecase = new MainUsecase(_currentUser);
-            await usecase.ModifyTimecard(order.Date, order.EoWTime);
-            await context.PostAsync("タイムカードを変更しました。");
+                var usecase = new MainUsecase(_currentUser);
+                await usecase.ModifyTimecard(order.Date, order.EoWTime);
+                await context.PostAsync("タイムカードを変更しました。");
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"ReceiveModifyTimecardOrderAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
+            }
         }
 
         private async Task<bool> CommandAboutThisAsync(IDialogContext context, Command command)
@@ -511,54 +544,85 @@ namespace TimecardBot.Dialogs
 
         private async Task ReceivedPreferenceAsync(IDialogContext context, IAwaitable<bool> result)
         {
-            var confirm = await result;
-            if (confirm)
+            try
             {
-                var dlg = FormDialog.FromForm(ChangeUserPreferenceOrder.BuildForm, FormOptions.PromptInStart);
-                context.Call(dlg, ReceiveChangeUserPreferenceOrderAsync);
+                var confirm = await result;
+                if (confirm)
+                {
+                    var dlg = FormDialog.FromForm(ChangeUserPreferenceOrder.BuildForm, FormOptions.PromptInStart);
+                    context.Call(dlg, ReceiveChangeUserPreferenceOrderAsync);
+                }
+                else
+                {
+                    await context.PostAsync("ユーザー設定の変更を中止しました。");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await context.PostAsync("ユーザー設定の変更を中止しました。");
+                Trace.WriteLine($"ReceivedUnregistUserAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
             }
         }
 
         private async Task ReceiveChangeUserPreferenceOrderAsync(IDialogContext context, IAwaitable<ChangeUserPreferenceOrder> result)
         {
-            var order = await result;
-            await context.PostAsync("ユーザー設定を変更しました。");
+            try
+            {
+                var order = await result;
+                await context.PostAsync("ユーザー設定を変更しました。");
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"ReceivedUnregistUserAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
+            }
         }
 
         public async Task ReceivedUnregistUserAsync(IDialogContext context, IAwaitable<bool> argument)
         {
-            var confirm = await argument;
-            if (confirm)
+            try
             {
-                PromptDialog.Confirm(context, ReceivedUnregistUserConfirmAsync, 
-                    "退会すると記録されているデータが全て削除されます。本当に削除してよろしいですか？（これが最後の確認です）");
+                var confirm = await argument;
+                if (confirm)
+                {
+                    PromptDialog.Confirm(context, ReceivedUnregistUserConfirmAsync,
+                        "退会すると記録されているデータが全て削除されます。本当に削除してよろしいですか？（これが最後の確認です）");
+                }
+                else
+                {
+                    await context.PostAsync("ユーザー削除を中止しました。");
+                    context.Wait(ReceivedMessageAsync);
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await context.PostAsync("ユーザー削除を中止しました。");
-                context.Wait(ReceivedMessageAsync);
+                Trace.WriteLine($"ReceivedUnregistUserAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
             }
         }
 
         public async Task ReceivedUnregistUserConfirmAsync(IDialogContext context, IAwaitable<bool> argument)
         {
-            var confirm = await argument;
-            if (confirm)
+            try
             {
-                var usecase = new UserUsecase();
-                await usecase.DeleteUser(_currentUser);
-                _currentUser = null;
-                await context.PostAsync("ユーザーを削除しました。またのご利用をお待ちしております。");
+                var confirm = await argument;
+                if (confirm)
+                {
+                    var usecase = new UserUsecase();
+                    await usecase.DeleteUser(_currentUser);
+                    _currentUser = null;
+                    await context.PostAsync("ユーザーを削除しました。またのご利用をお待ちしております。");
+                }
+                else
+                {
+                    await context.PostAsync("ユーザー削除を中止しました。");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await context.PostAsync("ユーザー削除を中止しました。");
+                Trace.WriteLine($"ReceivedUnregistUserConfirmAsync failed - {ex.Message} - {ex.StackTrace}");
+                await context.PostAsync($"中止しました。");
             }
-            context.Wait(ReceivedMessageAsync);
         }
     }
 }

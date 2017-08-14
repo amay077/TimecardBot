@@ -1,5 +1,7 @@
-﻿using System;
+﻿using CSharp.Japanese.Kanaxs;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -27,42 +29,52 @@ namespace TimecardLogic.DataModels
 
         public static Yyyymmdd Parse(string yyyymmdd, string timeZoneId)
         {
-            int year = 0;
-            int month = 0;
-            int day = 0;
+            try
+            {
+                int year = 0;
+                int month = 0;
+                int day = 0;
 
-            if ("今日".Equals(yyyymmdd))
-            {
-                var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-                var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
-                return Yyyymmdd.FromDate(nowTz);            
-            }
-            else if ("昨日".Equals(yyyymmdd))
-            {
-                var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-                var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
-                return Yyyymmdd.FromDate(nowTz.AddDays(-1));
-            }
+                if ("今日".Equals(yyyymmdd))
+                {
+                    var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                    var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                    return Yyyymmdd.FromDate(nowTz);
+                }
+                else if ("昨日".Equals(yyyymmdd))
+                {
+                    var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+                    var nowTz = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+                    return Yyyymmdd.FromDate(nowTz.AddDays(-1));
+                }
 
-            var buf = yyyymmdd.Split('/');
+                var hankaku = Kana.ToHankaku(yyyymmdd);
 
-            if (buf?.Length == 3)
-            {
-                year = int.Parse(buf[0]);
-                month = int.Parse(buf[1]);
-                day = int.Parse(buf[2]);
+                var buf = hankaku.Split('/', '-', '年', '月', '日');
+
+                if (buf?.Length == 3 || buf?.Length == 4)
+                {
+                    year = int.Parse(buf[0]);
+                    month = int.Parse(buf[1]);
+                    day = int.Parse(buf[2]);
+                }
+                else if (hankaku.Length >= 8)
+                {
+                    year = int.Parse(hankaku.Substring(0, 4));
+                    month = int.Parse(hankaku.Substring(4, 2));
+                    day = int.Parse(hankaku.Substring(6, 2));
+                }
+                else
+                {
+                    return Yyyymmdd.Empty;
+                }
+                return new Yyyymmdd(year, month, day);
             }
-            else if (yyyymmdd.Length >= 8)
+            catch (Exception)
             {
-                year = int.Parse(yyyymmdd.Substring(0, 4));
-                month = int.Parse(yyyymmdd.Substring(4, 2));
-                day = int.Parse(yyyymmdd.Substring(6, 2));
-            }
-            else
-            {
+                Trace.WriteLine($"Hhmm parse failed - {yyyymmdd}, timeZone - {timeZoneId}");
                 return Yyyymmdd.Empty;
             }
-            return new Yyyymmdd(year, month, day);
         }
 
 

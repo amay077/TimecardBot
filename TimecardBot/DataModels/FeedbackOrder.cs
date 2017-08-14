@@ -15,7 +15,7 @@ namespace TimecardBot.DataModels
 
         public static IForm<FeedbackOrder> BuildForm()
         {
-            return new FormBuilder<FeedbackOrder>()
+            return FormUtil.CreateCustomForm<FeedbackOrder>()
                 .Message("このボットに対するご意見を募集しています。")
                 .Field(nameof(Body))
                 //.Field(nameof(Holidays))

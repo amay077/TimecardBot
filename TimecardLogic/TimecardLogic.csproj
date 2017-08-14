@@ -76,6 +76,7 @@
     <Compile Include="Entities\MonthlyTimecardEntity.cs" />
     <Compile Include="Entities\UserEntity.cs" />
     <Compile Include="Extensions\UserExtensions.cs" />
+    <Compile Include="Libs\kanaxs.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Repositories\ConversationStateRepository.cs" />
     <Compile Include="Repositories\FeedbackRepository.cs" />

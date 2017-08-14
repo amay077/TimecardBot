@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CSharp.Japanese.Kanaxs;
+using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -37,7 +38,7 @@ namespace TimecardBot.Commands
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"Resolve failed. text: {text} - {ex.Message}");
+                Trace.WriteLine($"CommandResolver.Resolve failed. text: {text} - {ex.Message} - {ex.StackTrace}");
                 return new Command(CommandType.None, text);
             }
         }
@@ -73,7 +74,18 @@ namespace TimecardBot.Commands
 
         private static string Clean(string text)
         {
-            return _regex.Replace(text.Replace("\n", ""), "");
+            var hankaku = Kana.ToHankaku(text);
+            hankaku = hankaku
+                .Replace("\0", "")
+                .Replace("\b", "")
+                .Replace("\n", "")
+                .Replace("\r", "")
+                .Replace("\t", "")
+                .Replace("(", "")
+                .Replace(")", "")
+                .Replace(":", "")
+                ;
+            return _regex.Replace(hankaku, "");
         }
 
     }

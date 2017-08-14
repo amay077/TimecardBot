@@ -30,7 +30,8 @@ namespace TimecardBot.DataModels
         public static IForm<RegistUserOrder> BuildForm()
         {
             return new FormBuilder<RegistUserOrder>()
-                .Message("ユーザー登録を行います。次の情報を入力または選択してください。")
+                .Message("ユーザー登録を行います。次の情報を入力または選択してください。" +
+                "中止する場合は「中止」、「やめる」または「cancel」とタイプしてください。")
                 .Field(nameof(NickName))
                 .Field(nameof(EndOfWorkTime))
                 .Field(nameof(DayOfWeekEnables))

@@ -15,8 +15,9 @@ namespace TimecardBot.DataModels
 
         public static IForm<DownloadTimecardOrder> BuildForm()
         {
-            return new FormBuilder<DownloadTimecardOrder>()
-                .Message("指定した年月のタイムカードを表示します。")
+            return FormUtil.CreateCustomForm<DownloadTimecardOrder>()
+                .Message("指定した年月のタイムカードを表示します。" +
+                "中止する場合は「中止」、「やめる」または「cancel」とタイプしてください。")
                 .Field(nameof(YearMonth))
                 //.Confirm(async order =>
                 //{
@@ -28,6 +29,5 @@ namespace TimecardBot.DataModels
                 //.AddRemainingFields()
                 .Build();
         }
-
     }
 }

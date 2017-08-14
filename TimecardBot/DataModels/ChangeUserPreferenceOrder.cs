@@ -36,8 +36,9 @@ namespace TimecardBot.DataModels
 
         public static IForm<ChangeUserPreferenceOrder> BuildForm()
         {
-            return new FormBuilder<ChangeUserPreferenceOrder>()
-                .Message("ユーザー設定の変更を行います。次の情報を入力または選択してください。")
+            return FormUtil.CreateCustomForm<ChangeUserPreferenceOrder>()
+                .Message("ユーザー設定の変更を行います。次の情報を入力または選択してください。" +
+                "中止する場合は「中止」、「やめる」または「cancel」とタイプしてください。")
                 .Field(nameof(NickName))
                 .Field(nameof(EndOfWorkTime))
                 .Field(nameof(EndOfConfirmTime))

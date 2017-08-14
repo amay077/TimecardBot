@@ -19,8 +19,9 @@ namespace TimecardBot.DataModels
 
         public static IForm<ModifyTimecardOrder> BuildForm()
         {
-            return new FormBuilder<ModifyTimecardOrder>()
-                .Message("指定した日付のタイムカードを編集（追加、更新または削除）します。")
+            return FormUtil.CreateCustomForm<ModifyTimecardOrder>()
+                .Message("指定した日付のタイムカードを編集（追加、更新または削除）します。" +
+                "中止する場合は「中止」、「やめる」または「cancel」とタイプしてください。")
                 .Field(nameof(Date))
                 .Field(nameof(EoWTime))
                 .Confirm(async order =>
