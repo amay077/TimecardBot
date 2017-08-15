@@ -139,7 +139,6 @@
     <Compile Include="Commands\CommandType.cs" />
     <Compile Include="Controllers\MessagesController.cs" />
     <Compile Include="Commands\AliasAttribute.cs" />
-    <Compile Include="DataModels\ChangeUserPreferenceOrder.cs" />
     <Compile Include="DataModels\DownloadTimecardOrder.cs" />
     <Compile Include="DataModels\EndOfWorkTimeType.cs" />
     <Compile Include="DataModels\FeedbackOrder.cs" />

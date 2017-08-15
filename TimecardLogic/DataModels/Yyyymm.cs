@@ -61,6 +61,19 @@ namespace TimecardLogic.DataModels
                     Trace.WriteLine($"Yyyymm parse invalid length - {yyyymm}");
                     return Yyyymm.Empty;
                 }
+
+                if (!(2000 <= year && year <= 3999))
+                {
+                    Trace.WriteLine($"Yyyymm parse failed - year is out of range {yyyymm}");
+                    return Yyyymm.Empty;
+                }
+
+                if (!(1 <= month && month <= 12))
+                {
+                    Trace.WriteLine($"Yyyymm parse failed - month is out of range {yyyymm}");
+                    return Yyyymm.Empty;
+                }
+
                 return new Yyyymm(year, month);
             }
             catch (Exception)

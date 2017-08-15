@@ -552,7 +552,7 @@ namespace TimecardBot.Dialogs
             }
             catch (Exception ex)
             {
-                Trace.WriteLine($"ReceivedCommandPreferenceAsync2 failed - {ex.Message} - {ex.StackTrace}");
+                Trace.WriteLine($"ReceivedCommandPreferenceAsync failed - {ex.Message} - {ex.StackTrace}");
                 await context.PostAsync($"中止しました。");
             }
             context.Wait(ReceivedMessageAsync);

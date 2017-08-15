@@ -15,7 +15,8 @@ namespace TimecardLogic.DataModels
 
         public int Hour { get; }
         public int Minute { get; }
-        public bool IsEmpty {
+        public bool IsEmpty
+        {
             get
             {
                 return Hour == 0 && Minute == 0;
@@ -52,6 +53,19 @@ namespace TimecardLogic.DataModels
                 {
                     return Hhmm.Empty;
                 }
+
+                if (!(0 <= hour && hour <= 36))
+                {
+                    Trace.WriteLine($"Hhmm parse failed - hour is out of range {hhmm}");
+                    return Hhmm.Empty;
+                }
+
+                if (!(0 <= minute && minute <= 59))
+                {
+                    Trace.WriteLine($"Hhmm parse failed - minute is out of range {hhmm}");
+                    return Hhmm.Empty;
+                }
+
                 return new Hhmm(hour, minute);
             }
             catch (Exception)
