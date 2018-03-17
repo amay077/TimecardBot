@@ -97,7 +97,7 @@ namespace TimecardFunctions
                         }
 
                         // 今日の曜日はユーザー設定で有効か？
-                        var enableDayOfWeek = (user.DayOfWeekEnables?.Length ?? 0) - 1 > (int)nowUserTz.DayOfWeek ?
+                        var enableDayOfWeek = (user.DayOfWeekEnables?.Length ?? 0) == 7 ?
                             (user.DayOfWeekEnables[(int)nowUserTz.DayOfWeek] == '1') : true;
                         if (!enableDayOfWeek)
                         {
